@@ -47,29 +47,7 @@ npm install
 
 
 
-###Relational Database Schema
-CREATE DATABASE IF NOT EXISTS eventsdb;
-USE eventsdb;
 
--- 1. Events Master Table
-CREATE TABLE IF NOT EXISTS campus_events (
-    event_id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    event_date VARCHAR(100) NOT NULL,
-    location VARCHAR(255) NOT NULL
-);
-
--- 2. Attendee RSVP Registrations Table
-CREATE TABLE IF NOT EXISTS event_rsvps (
-    rsvp_id INT AUTO_INCREMENT PRIMARY KEY,
-    event_id INT,
-    student_name VARCHAR(255) NOT NULL,
-    student_email VARCHAR(255) NOT NULL,
-    registration_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (event_id) REFERENCES campus_events(event_id) ON DELETE CASCADE
-);
- ---
 
 ### API Summary
 | Method | Path | Purpose |
@@ -80,9 +58,4 @@ CREATE TABLE IF NOT EXISTS event_rsvps (
 
 ----
 
-###CORS
-"headers": {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
-}
+
