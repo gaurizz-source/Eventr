@@ -1,7 +1,6 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 
-
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
@@ -11,6 +10,8 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [],
       define: {
+        // Fixes the AWS Cognito 'global is not defined' error
+        global: 'window',
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
       },

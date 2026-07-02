@@ -12,5 +12,8 @@
     "@types/node": "^22.20.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+  },
+  "dependencies": {
+    "amazon-cognito-identity-js": "^6.3.18"
   }
 }

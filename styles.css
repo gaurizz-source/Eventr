@@ -699,8 +699,9 @@ main {
 
 /* Authentication Engine Container Style */
 .auth-container {
-  max-width: 450px;
+  max-width: 480px;
   margin: 4rem auto;
+  padding: 2.5rem;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -726,11 +727,11 @@ main {
 }
 
 .auth-form-container { padding: 2rem; }
-.form-group { margin-bottom: 1.25rem; }
-.form-label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; }
+.form-group { margin-bottom: 1.75rem; }
+.form-label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.6rem; }
 .form-input, .form-select {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.8rem 1rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
   font-family: inherit;
@@ -742,12 +743,12 @@ main {
   background-color: var(--primary);
   color: white;
   border: none;
-  padding: 0.875rem;
+  padding: 0.9rem;
   border-radius: var(--radius-sm);
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  margin-top: 1rem;
+  margin-top: 1.25rem;
 }
 
 /* Society host specific setup layout elements */
