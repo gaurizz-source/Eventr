@@ -5,61 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IGDTUW Opportunity & Event Tracking Platform</title>
   
-  <!-- Inter & JetBrains Mono Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-  <!-- Modular Stylesheet -->
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <!-- 1. PREMIUM MINIMALIST SPLASH SCREEN -->
   <div id="loading-screen">
     <div class="loader-content">
       <h1 class="splash-title">evntr</h1>
     </div>
   </div>
 
-  <!-- Top Navigation Bar -->
   <header>
     <div class="navbar">
       <a href="#" class="logo-container" onclick="switchView('student-dashboard'); return false;" id="nav-logo">
-        <div class="logo-icon">I</div>
+        <div class="logo-icon">e</div>
         <div class="logo-text">
-          <span class="logo-title">IGDTUW Opps</span>
+          <span class="logo-title">e v n t r</span>
           <span class="logo-subtitle">Opportunity Platform</span>
         </div>
       </a>
       
       <nav class="nav-links">
         <button class="nav-btn active" id="btn-nav-student" onclick="switchView('student-dashboard')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-graduation-cap"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
           Student Dashboard
         </button>
         <button class="nav-btn" id="btn-nav-host" onclick="switchView('host-dashboard')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-round"><path d="M18 21a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><path d="M12 2a14.5 14.5 0 0 0 0 16"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><path d="M12 2a14.5 14.5 0 0 0 0 16"/></svg>
           Society Portal
         </button>
         
         <div id="nav-auth-section">
-          <button class="nav-btn auth-btn" onclick="switchView('auth-page')" id="nav-auth-trigger">Sign In / Sign Up</button>
+          <button class="nav-btn auth-btn" onclick="switchView('auth-page')" id="nav-auth-trigger">Log In / Sign Up</button>
         </div>
       </nav>
     </div>
   </header>
 
-  <!-- Notification Toast Area -->
   <div class="toast-container" id="toast-root"></div>
 
-  <!-- Main Application Canvas -->
   <main>
 
-    <!-- 1. STUDENT / PUBLIC VIEW -->
     <div id="view-student-dashboard" class="view-container active">
       
-      <!-- Interactive Campus Hero Section (Styled after Image_198856) -->
       <div class="hero-banner" id="student-hero">
         <div class="hero-badge">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v16"/><path d="M5 10h14"/></svg>
@@ -69,7 +61,6 @@
         <p class="hero-desc">Access premier hackathons, cultural events, coding trials, and creative contests curated specifically by IGDTUW's leading societies like ACM, IEEE, Lean In, and Hypnotics.</p>
       </div>
 
-      <!-- Overlapping Search and Filter Bar Component -->
       <div class="search-filter-deck">
         <div class="search-input-wrapper">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -81,211 +72,60 @@
             <option value="this-week">This Week</option>
             <option value="this-month">This Month</option>
           </select>
-          <select id="filter-location" class="filter-dropdown">
-            <option value="">Location (All)</option>
-            <option value="audi">Auditorium</option>
-            <option value="lab">CS Labs</option>
-            <option value="online">Online / Hybrid</option>
-          </select>
+          
           <select id="filter-type" class="filter-dropdown">
             <option value="">Type (All)</option>
             <option value="hackathon">Hackathon</option>
-            <option value="cultural">Cultural</option>
             <option value="workshop">Workshop</option>
+            <option value="seminar">Seminar</option>
+            <option value="webinar">Webinar</option>
+            <option value="conference">Conference</option>
+            <option value="tech-talk">Tech Talk</option>
+            <option value="coding">Coding Contest</option>
+            <option value="quiz">Quiz</option>
+            <option value="cultural">Cultural</option>
+            <option value="fest">College Fest</option>
+            <option value="music">Music</option>
+            <option value="dance">Dance</option>
+            <option value="drama">Drama/Theatre</option>
+            <option value="art">Art & Design</option>
+            <option value="photography">Photography</option>
+            <option value="sports">Sports</option>
+            <option value="gaming">Gaming / Esports</option>
+            <option value="debate">Debate</option>
+            <option value="literary">Literary</option>
+            <option value="entrepreneurship">Entrepreneurship</option>
+            <option value="startup">Startup Pitch</option>
+            <option value="placement">Placement Drive</option>
+            <option value="internship">Internship Fair</option>
+            <option value="career">Career Guidance</option>
+            <option value="networking">Networking</option>
+            <option value="volunteering">Volunteering</option>
+            <option value="social">Social Service</option>
+            <option value="awareness">Awareness Campaign</option>
+            <option value="orientation">Orientation</option>
+            <option value="alumni">Alumni Meet</option>
           </select>
         </div>
       </div>
 
-      <!-- Main Section View Layout Split -->
       <div class="dashboard-layout" style="margin-top: 3.5rem;">
         <div class="main-content-flow">
           
-          <!-- Live Section Grid -->
           <div class="opportunities-section">
             <div class="section-header">
               <h2 class="section-title">New Events</h2>
               <p class="section-subtitle">Explore recently launched challenges and submit your entry panels before deadlines expire.</p>
             </div>
 
-           <div class="opportunities-grid" id="opportunities-root">
-  
-  <div class="card">
-    <div class="card-banner" style="background-image: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=800&q=80');">
-      <span class="category-badge">Technical</span>
-      <span class="eligibility-badge open">Open</span>
-    </div>
-    <div class="card-body">
-      <span class="card-society">ACM Student Chapter</span>
-      <h3 class="card-title">Innerve Hackathon 2026</h3>
-      <div class="card-meta-list">
-        <div class="card-meta-item">
-          <svg class="card-meta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-          <span>Oct 14th - Oct 16th, 2026</span>
-        </div>
-        <div class="card-meta-item">
-          <svg class="card-meta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-          <span>Main Auditorium, IGDTUW</span>
-        </div>
-      </div>
-      <div class="card-footer">
-        <span class="registrations-count">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          432 Registered
-        </span>
-        <button class="btn-card-action" onclick="openEventDetails()">View details</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-banner" style="background-image: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80');">
-      <span class="category-badge">Cultural</span>
-      <span class="eligibility-badge open">Open</span>
-    </div>
-    <div class="card-body">
-      <span class="card-society">Hypnotics Society</span>
-      <h3 class="card-title">Taarangana Street Showdown</h3>
-      <div class="card-meta-list">
-        <div class="card-meta-item">
-          <svg class="card-meta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-          <span>Nov 02, 2026</span>
-        </div>
-        <div class="card-meta-item">
-          <svg class="card-meta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/></svg>
-          <span>Open Air Theater (OAT)</span>
-        </div>
-      </div>
-      <div class="card-footer">
-        <span class="registrations-count">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          189 Registered
-        </span>
-        <button class="btn-card-action" onclick="openEventDetails()">View details</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-banner" style="background-image: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1521737711867-e3b904737d88?auto=format&fit=crop&w=800&q=80');">
-      <span class="category-badge">Career</span>
-      <span class="eligibility-badge open" style="background-color: #f59e0b;">Limited Seats</span>
-    </div>
-    <div class="card-body">
-      <span class="card-society">Lean In Circle</span>
-      <h3 class="card-title">Corporate Mock Boardrooms</h3>
-      <div class="card-meta-list">
-        <div class="card-meta-item">
-          <svg class="card-meta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-          <span>Sept 28, 2026</span>
-        </div>
-        <div class="card-meta-item">
-          <svg class="card-meta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/></svg>
-          <span>Seminar Hall, Administrative Block</span>
-        </div>
-      </div>
-      <div class="card-footer">
-        <span class="registrations-count">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          310 Registered
-        </span>
-        <button class="btn-card-action" onclick="openEventDetails()">View details</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-banner" style="background-image: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=800&q=80');">
-      <span class="category-badge">Literary</span>
-      <span class="eligibility-badge open">Open</span>
-    </div>
-    <div class="card-body">
-      <span class="card-society">Bhangra & Rhetoric Club</span>
-      <h3 class="card-title">National Youth Parliament</h3>
-      <div class="card-meta-list">
-        <div class="card-meta-item">
-          <svg class="card-meta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-          <span>Dec 05, 2026</span>
-        </div>
-        <div class="card-meta-item">
-          <svg class="card-meta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/></svg>
-          <span>Conference Room, IT Block</span>
-        </div>
-      </div>
-      <div class="card-footer">
-        <span class="registrations-count">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          95 Registered
-        </span>
-        <button class="btn-card-action" onclick="openEventDetails()">View details</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-banner" style="background-image: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80');">
-      <span class="category-badge">Esports</span>
-      <span class="eligibility-badge open" style="background-color: #3b82f6;">All Branches</span>
-    </div>
-    <div class="card-body">
-      <span class="card-society">IEEE Student Branch</span>
-      <h3 class="card-title">Valorant Campus Arena </h3>
-      <div class="card-meta-list">
-        <div class="card-meta-item">
-          <svg class="card-meta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-          <span>Oct 30th, 2026</span>
-        </div>
-        <div class="card-meta-item">
-          <svg class="card-meta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/></svg>
-          <span>Online / Hybrid Tournament</span>
-        </div>
-      </div>
-      <div class="card-footer">
-        <span class="registrations-count">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          540 Registered
-        </span>
-        <button class="btn-card-action" onclick="openEventDetails()">View details</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-banner" style="background-image: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1474631245212-32dc3c8310c6?auto=format&fit=crop&w=800&q=80');">
-      <span class="category-badge">Entrepreneurship</span>
-      <span class="eligibility-badge" style="background-color: #ef4444;">Closing Soon</span>
-    </div>
-    <div class="card-body">
-      <span class="card-society">E-Cell IGDTUW</span>
-      <h3 class="card-title">InnovateX Startup Pitch</h3>
-      <div class="card-meta-list">
-        <div class="card-meta-item">
-          <svg class="card-meta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-          <span>Nov 15, 2026</span>
-        </div>
-        <div class="card-meta-item">
-          <svg class="card-meta-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/></svg>
-          <span>Incubation Center Wing</span>
-        </div>
-      </div>
-      <div class="card-footer">
-        <span class="registrations-count">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          124 Registered
-        </span>
-        <button class="btn-card-action" onclick="openEventDetails()">View details</button>
-      </div>
-    </div>
-  </div>
-
-</div>
+            <div class="opportunities-grid" id="opportunities-root"></div>
           </div>
         </div>
 
-        <!-- Sidebar panels -->
         <aside class="student-rsvp-sidebar">
           <div class="rsvp-header">
             <h3 class="rsvp-title">Your RSVPs</h3>
-            <span class="rsvp-badge" id="rsvp-count">0</span>
+            <span class="rsvp-badge" id="rsvp-count-badge">0</span>
           </div>
           <div class="rsvp-list" id="rsvp-list-root">
             <div class="rsvp-empty">You haven't RSVP'd to any running events yet. Your registered panels will appear here.</div>
@@ -294,7 +134,6 @@
       </div>
     </div>
 
-    <!-- 2. AUTHENTICATION ENGINE SCREEN -->
     <div id="view-auth-page" class="view-container">
       <div class="auth-container">
         <div class="auth-toggle-tabs">
@@ -302,38 +141,44 @@
           <button class="auth-toggle-tab" id="auth-tab-register" onclick="toggleAuthForm('register')">Create Account</button>
         </div>
         
-        <div class="auth-form-container">
-          <form id="auth-form" onsubmit="handleAuthSubmit(event)">
-            <div class="form-group">
-              <label class="form-label">University Email Address</label>
-              <input type="email" class="form-input" required placeholder="name@igdtuw.ac.in">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Password</label>
-              <input type="password" class="form-input" required placeholder="••••••••">
-            </div>
-            <div id="extended-register-fields" style="display: none;">
-              <div class="form-group">
+        <div class="auth-form-container" style="padding: 1.5rem 0;">
+          <form id="auth-system-form" onsubmit="handleAuthWorkflowSubmit(event)">
+            
+            <div id="register-fields-group" style="display: none;">
+              <div class="form-group" style="margin-bottom: 1.25rem;">
                 <label class="form-label">Full Name</label>
-                <input type="text" class="form-input" placeholder="Ananya Sharma">
+                <input type="text" id="auth-stud-name" class="form-input" placeholder="Ananya Sharma">
               </div>
-              <div class="form-group">
+              <div class="form-group" style="margin-bottom: 1.25rem;">
                 <label class="form-label">Branch Track</label>
-                <select class="form-select">
-                  <option>CSE (Computer Science & Eng.)</option>
-                  <option>IT (Information Technology)</option>
-                  <option>ECE (Electronics & Comm. Eng.)</option>
-                  <option>MAE (Mechanical & Automation Eng.)</option>
+                <select class="form-select" id="auth-stud-branch" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid #cbd5e1;">
+                  <option value="CSE">CSE (Computer Science & Eng.)</option>
+                  <option value="IT">IT (Information Technology)</option>
+                  <option value="ECE">ECE (Electronics & Comm. Eng.)</option>
+                  <option value="MAE">MAE (Mechanical & Automation Eng.)</option>
                 </select>
               </div>
+              <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label class="form-label">Graduation Year</label>
+                <input type="number" id="auth-stud-year" class="form-input" placeholder="2028">
+              </div>
             </div>
-            <button type="submit" class="form-button">Proceed</button>
+
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+              <label class="form-label">University Email Address</label>
+              <input type="email" id="auth-core-email" class="form-input" required placeholder="name@igdtuw.ac.in">
+            </div>
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+              <label class="form-label">Password</label>
+              <input type="password" id="auth-core-password" class="form-input" required placeholder="••••••••">
+            </div>
+
+            <button type="submit" id="auth-submit-btn" class="form-button" style="width:100%; margin-top:1rem;">Sign In</button>
           </form>
         </div>
       </div>
     </div>
 
-    <!-- 3. SOCIETY HOST HOUSING PORTAL -->
     <div id="view-host-dashboard" class="view-container">
       <div class="section-header">
         <h2 class="section-title">Society Management Workspace</h2>
@@ -353,108 +198,20 @@
                 <div class="host-card-info">
                   <h4 class="host-card-title">Innerve Hackathon 2026</h4>
                   <span class="host-card-society">ACM Chapter</span>
-                  <p class="host-card-date">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/></svg>
-                    Oct 14, 2026
-                  </p>
-                </div>
-              </div>
-              <div class="host-card-actions">
-                <div class="toggle-switch-container">
-                  <div>
-                    <span class="form-label" style="margin:0;">Accept Entries</span>
-                    <p class="toggle-label-desc">Toggle to close immediate public access registrations.</p>
-                  </div>
-                  <label class="switch">
-                    <input type="checkbox" checked>
-                    <span class="slider"></span>
-                  </label>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        <aside class="student-rsvp-sidebar">
-          <h3 class="detail-section-title">Quick Actions</h3>
-          <button class="form-button" style="margin-top:0;" onclick="showNotification('Opening deployment matrix module...', 'success')">Deploy New Event Profile</button>
-        </aside>
       </div>
     </div>
-
   </main>
 
-  <!-- 4. MODAL DETAILS SLIDE IN OVERLAY -->
-  <div class="modal-overlay" id="event-detail-modal">
-    <div class="modal-container">
-      <div class="modal-header">
-        <div class="modal-header-pattern"></div>
-        <div class="modal-header-top">
-          <div>
-            <h2 class="modal-title" id="modal-event-title">Innerve Hackathon 2026</h2>
-            <div class="modal-society-badge" id="modal-event-society">ACM Student Chapter</div>
-          </div>
-          <button class="modal-close-btn" onclick="closeModal()">×</button>
-        </div>
-      </div>
-      
-      <div class="modal-tabs">
-        <button class="modal-tab-btn active">Information</button>
-        <button class="modal-tab-btn">Rules & Guidelines</button>
-      </div>
-
-      <div class="modal-content-scroll">
-        <div class="eligibility-check-banner eligible">
-          <svg class="eligibility-banner-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-          <div>
-            <div class="eligibility-banner-title">Profile Eligible</div>
-            <div class="eligibility-banner-desc">Your verified university credentials match the registration criteria requirements.</div>
-          </div>
-        </div>
-
-        <div class="detail-grid">
-          <div>
-            <h3 class="detail-section-title">About the Event</h3>
-            <p class="detail-text">Innerve is the annual flagship technical hackathon organized by ACM IGDTUW. Bring your teams together to solve real-world problems over an intense, uninterrupted dev sprint.</p>
-          </div>
-          <div>
-            <div class="meta-box-list">
-              <div class="meta-box-item">
-                <div class="meta-box-label">Venue / Mode</div>
-                <div class="meta-box-value">Campus Labs</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="nav-btn" onclick="closeModal()">Close</button>
-        <button class="btn-card-action" onclick="confirmRSVP()">Confirm Registration</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Footer Layout Block -->
   <footer>
     <div class="footer-content">
       <div class="footer-brand">
         <span class="footer-title">evntr Platform</span>
         <p class="footer-desc">The synchronized portal interface engineered explicitly to map, manage, and coordinate student capabilities across IGDTUW.</p>
-      </div>
-      <div class="footer-links-col">
-        <span class="footer-col-title">Framework</span>
-        <ul class="footer-links">
-          <li><a href="#" class="footer-link">Documentation</a></li>
-          <li><a href="#" class="footer-link">Portal Rules</a></li>
-        </ul>
-      </div>
-      <div class="footer-links-col">
-        <span class="footer-col-title">System</span>
-        <ul class="footer-links">
-          <li><a href="#" class="footer-link">Society Support</a></li>
-          <li><a href="#" class="footer-link">Developer Node</a></li>
-        </ul>
       </div>
     </div>
     <div class="footer-bottom">
@@ -462,7 +219,11 @@
     </div>
   </footer>
 
-  <!-- Application Interaction Controller -->
-  <script src="app.js"></script>
+  <script>
+    if (typeof global === 'undefined') {
+      var global = window;
+    }
+  </script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
