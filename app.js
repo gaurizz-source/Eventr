@@ -953,31 +953,56 @@ function renderAllOpportunities() {
   if (!allGrid) return;
   
   let allHtml = '';
+
   const dataset = state.opportunities.length > 0 ? state.opportunities : [
-    { eventId: "evt_01", title: "Innerve Hackathon 2026", society: "ACM Student Chapter", category: "Technical", eventDate: "Oct 14th - Oct 16th, 2026", registrations: 432 },
-    { eventId: "evt_02", title: "Taarangana Street Showdown", society: "Hypnotics Society", category: "Cultural", eventDate: "Nov 02, 2026", registrations: 189 }
+    {
+      eventId: "evt_01",
+      title: "Innerve Hackathon 2026",
+      society: "ACM Student Chapter",
+      category: "Technical",
+      eventDate: "Oct 14th - Oct 16th, 2026",
+      registrations: 432
+    },
+    {
+      eventId: "evt_02",
+      title: "Taarangana Street Showdown",
+      society: "Hypnotics Society",
+      category: "Cultural",
+      eventDate: "Nov 02, 2026",
+      registrations: 189
+    }
   ];
 
   dataset.forEach(opp => {
     const currentId = opp.eventId || opp.id; 
     const isReg = state.rsvps.includes(currentId);
+
     allHtml += `
       <div class="card">
         <div class="card-banner">
           <span class="category-badge">${opp.category || 'Event'}</span>
         </div>
+
         <div class="card-body">
           <span class="card-society">${opp.society || 'Official'}</span>
           <h3 class="card-title">${opp.title}</h3>
-          <p style="font-size:0.8rem; margin:0.5rem 0;">Date: ${opp.eventDate || '2026'}</p>
+
+          <p style="font-size:0.8rem; margin:0.5rem 0;">
+            Date: ${opp.eventDate || '2026'}
+          </p>
+
           <div class="card-footer">
             <span class="registrations-count">${opp.registrations || 0} Registered</span>
-            <button class="btn-card-action" onclick="window.openEventDetails('${currentId}')">View details</button>
+
+            <button class="btn-card-action" onclick="window.openEventDetails('${currentId}')">
+              View details
+            </button>
           </div>
         </div>
       </div>
     `;
   });
+
   allGrid.innerHTML = allHtml;
 }
 
