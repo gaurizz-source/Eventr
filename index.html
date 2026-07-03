@@ -134,42 +134,17 @@
       </div>
     </div>
   <!-- YHA SE VIEW DETAILs kA CODE HAI -->
-    <div id="view-event-details" class="view-container">
-  <div style="max-width: 1000px; margin: 2rem auto; padding: 0 1rem;">
-    
-    <button onclick="window.switchView('student-dashboard')" style="background: none; border: none; color: #4f46e5; font-weight: 600; cursor: pointer; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-      ← Back to Dashboard
-    </button>
+  <!-- EVENT DETAILS PAGE: loaded by app.js -->
+<div id="view-event-details" class="view-container">
+  <div id="event-detail-root">
+    <div class="event-detail-shell">
+      <button class="detail-back-btn" type="button" onclick="window.closeEventDetails()">
+        ← Back to Dashboard
+      </button>
 
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; align-items: start;">
-      
-      <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-        <div id="detail-category-badge" style="display: inline-block; background: #e0e7ff; color: #4f46e5; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem;">Technical</div>
-        <h1 id="detail-title" style="font-size: 2.25rem; color: #1e293b; margin-bottom: 0.5rem;">Event Title</h1>
-        <p id="detail-society" style="color: #64748b; font-weight: 500; margin-bottom: 2rem;">Hosted by Society Name</p>
-        
-        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin-bottom: 2rem;">
-        
-        <h3>About the Event</h3>
-        <p style="color: #475569; line-height: 1.6; margin-top: 0.5rem;">
-          Get ready to showcase your skills in this competitive arena. Bring your best ideas, collaborate with peers, and win exciting prizes! Detailed rules, timelines, and guidelines will be shared by the organizing team.
-        </p>
+      <div class="detail-skeleton-card">
+        Loading event details...
       </div>
-
-      <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); position: sticky; top: 2rem; border: 1px solid #e2e8f0;">
-        <div style="font-weight: 700; color: #ef4444; margin-bottom: 1rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.25rem;">
-          ⏱️ Registration Open
-        </div>
-        
-        <button id="detail-register-btn" class="form-button" style="background: #4f46e5; color: white; width: 100%; border: none; padding: 0.8rem; border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 1rem;">
-          Register Now
-        </button>
-
-        <div style="display: flex; align-items: center; gap: 0.5rem; color: #64748b; font-size: 0.85rem; justify-content: center;">
-          👥 <span id="detail-reg-count">0</span> Students Registered
-        </div>
-      </div>
-
     </div>
   </div>
 </div>
