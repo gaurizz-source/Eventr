@@ -951,59 +951,58 @@ function updateNavProfile() {
 function renderAllOpportunities() {
   const allGrid = document.getElementById('opportunities-root');
   if (!allGrid) return;
-  
-  let allHtml = '';
 
-  const dataset = state.opportunities.length > 0 ? state.opportunities : [
-    {
-      eventId: "evt_01",
-      title: "Innerve Hackathon 2026",
-      society: "ACM Student Chapter",
-      category: "Technical",
-      eventDate: "Oct 14th - Oct 16th, 2026",
-      registrations: 432
-    },
-    {
-      eventId: "evt_02",
-      title: "Taarangana Street Showdown",
-      society: "Hypnotics Society",
-      category: "Cultural",
-      eventDate: "Nov 02, 2026",
-      registrations: 189
-    }
-  ];
+  const dataset = getDataset().map(opp => normaliseEvent(opp));
 
-  dataset.forEach(opp => {
-    const currentId = opp.eventId || opp.id; 
-    const isReg = state.rsvps.includes(currentId);
+  allGrid.innerHTML = dataset.map(opp => {
+    const isReg = state.rsvps.map(String).includes(String(opp.eventId));
 
-    allHtml += `
+    return `
       <div class="card">
-        <div class="card-banner">
-          <span class="category-badge">${opp.category || 'Event'}</span>
+        <div 
+          class="card-banner" 
+          style="background-image: linear-gradient(180deg, rgba(15,23,42,0.18), rgba(15,23,42,0.72)), url('${escapeHtml(opp.bannerImage)}')"
+        >
+          <span class="category-badge">${escapeHtml(opp.category)}</span>
+
+          <span class="eligibility-badge open">
+            ${isReg ? 'Registered' : 'Open'}
+          </span>
         </div>
 
         <div class="card-body">
-          <span class="card-society">${opp.society || 'Official'}</span>
-          <h3 class="card-title">${opp.title}</h3>
+          <span class="card-society">${escapeHtml(opp.society)}</span>
 
-          <p style="font-size:0.8rem; margin:0.5rem 0;">
-            Date: ${opp.eventDate || '2026'}
-          </p>
+          <h3 class="card-title">${escapeHtml(opp.title)}</h3>
+
+          <div class="card-meta-list">
+            <div class="card-meta-item">
+              <span class="card-meta-icon">📅</span>
+              ${escapeHtml(opp.eventDate)}
+            </div>
+
+            <div class="card-meta-item">
+              <span class="card-meta-icon">📍</span>
+              ${escapeHtml(opp.location)}
+            </div>
+          </div>
 
           <div class="card-footer">
-            <span class="registrations-count">${opp.registrations || 0} Registered</span>
+            <span class="registrations-count">
+              👤 ${escapeHtml(opp.registrations)} Registered
+            </span>
 
-            <button class="btn-card-action" onclick="window.openEventDetails('${currentId}')">
+            <button 
+              class="btn-card-action" 
+              onclick="window.openEventDetails('${escapeHtml(opp.eventId)}')"
+            >
               View details
             </button>
           </div>
         </div>
       </div>
     `;
-  });
-
-  allGrid.innerHTML = allHtml;
+  }).join('');
 }
 
 // Render active items directly to left panel drawers
