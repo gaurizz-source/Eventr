@@ -20,6 +20,261 @@ const state = {
   selectedEventId: null // Tracks which event details page is open
 };
 
+// Helper code
+
+const DEFAULT_EVENT_IMAGE = 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1400&q=80';
+
+const CATEGORY_IMAGES = {
+  technical: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1400&q=80',
+  hackathon: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1400&q=80',
+  cultural: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1400&q=80',
+  debate: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=1400&q=80',
+  workshop: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1400&q=80',
+  sports: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1400&q=80'
+};
+
+const SAMPLE_OPPORTUNITIES = [
+  {
+    eventId: 'evt_01',
+    title: 'Innerve Hackathon 2026',
+    society: 'ACM Student Chapter',
+    category: 'Hackathon',
+    mode: 'Offline',
+    location: 'IGDTUW, Delhi',
+    eventDate: 'Oct 14 - Oct 16, 2026',
+    deadline: 'Oct 10, 2026',
+    teamSize: '2 - 4 members',
+    registrations: 432,
+    prize: '₹50,000 prize pool',
+    about: 'A 36-hour build challenge where students prototype practical technology solutions, pitch them to mentors, and compete for prizes. Build, demo, and present your strongest idea with your team.',
+    eligibility: 'Open to IGDTUW students from all branches and years. Basic programming knowledge is recommended.',
+    tags: ['Hackathon', 'Coding', 'Innovation'],
+    timeline: [
+      'Registration closes: Oct 10, 2026',
+      'Opening ceremony: Oct 14, 2026',
+      'Final demo and judging: Oct 16, 2026'
+    ],
+    rules: [
+      'Each team can submit only one project.',
+      'Projects must be built during the hackathon window.',
+      'The decision of judges will be final.'
+    ],
+    perks: [
+      'Certificates for all valid participants',
+      'Mentor guidance during building hours',
+      'Networking with seniors and society members'
+    ],
+    faqs: [
+      {
+        question: 'Can first-year students participate?',
+        answer: 'Yes. First-year students can participate and are encouraged to join teams with mixed skill levels.'
+      },
+      {
+        question: 'Do I need a complete idea before registering?',
+        answer: 'No. You can refine the idea during the event with your team.'
+      }
+    ],
+    contactEmail: 'acm@igdtuw.ac.in'
+  },
+  {
+    eventId: 'evt_02',
+    title: 'Taarangana Street Showdown',
+    society: 'Hypnotics Society',
+    category: 'Cultural',
+    mode: 'Offline',
+    location: 'IGDTUW Main Stage',
+    eventDate: 'Nov 02, 2026',
+    deadline: 'Oct 28, 2026',
+    teamSize: '3 - 8 members',
+    registrations: 189,
+    prize: 'Trophies + certificates',
+    about: 'A high-energy street performance competition inspired by college fest culture. Teams perform short, impactful pieces in dance, drama, or mixed creative format.',
+    eligibility: 'Open to all college students. Participants must carry valid college ID cards.',
+    tags: ['Cultural', 'Dance', 'Drama'],
+    timeline: [
+      'Registration closes: Oct 28, 2026',
+      'Prelims: Nov 01, 2026',
+      'Finale: Nov 02, 2026'
+    ],
+    rules: [
+      'Performance duration must stay within the announced time limit.',
+      'Teams must report at least 30 minutes before their slot.',
+      'Use of unsafe props is not allowed.'
+    ],
+    perks: [
+      'Performance certificates',
+      'Fest exposure',
+      'Featured social media coverage'
+    ],
+    faqs: [
+      {
+        question: 'Can non-IGDTUW teams register?',
+        answer: 'Yes, unless the organizers announce a college-specific restriction.'
+      }
+    ],
+    contactEmail: 'hypnotics@igdtuw.ac.in'
+  }
+];
+
+function valueFrom(...values) {
+  return values.find(value => value !== undefined && value !== null && value !== '');
+}
+
+function getEventId(opp = {}) {
+  return String(
+    valueFrom(opp.eventId, opp.event_id, opp.id, opp._id, opp.eventID, '')
+  ).trim();
+}
+
+function getDataset() {
+  return Array.isArray(state.opportunities) && state.opportunities.length > 0
+    ? state.opportunities
+    : SAMPLE_OPPORTUNITIES;
+}
+
+function findOpportunityById(eventId) {
+  const target = String(eventId);
+  return getDataset().find(opp => getEventId(opp) === target);
+}
+
+function escapeHtml(value) {
+  return String(valueFrom(value, ''))
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function normaliseList(value, fallback = []) {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean).map(item => String(item));
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return value
+      .split(/\n|\r|;|\|/)
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  return fallback;
+}
+
+function normaliseFaqs(value) {
+  if (!Array.isArray(value)) return [];
+
+  return value.map(item => {
+    if (typeof item === 'string') {
+      return {
+        question: item,
+        answer: 'The organizing team will share more information soon.'
+      };
+    }
+
+    return {
+      question: valueFrom(item.question, item.q, 'Question'),
+      answer: valueFrom(item.answer, item.a, 'The organizing team will share more information soon.')
+    };
+  });
+}
+
+function getCategoryImage(category) {
+  const key = String(category || '').toLowerCase();
+  return CATEGORY_IMAGES[key] || DEFAULT_EVENT_IMAGE;
+}
+
+function normaliseEvent(raw = {}, localFallback = {}) {
+  const source = { ...localFallback, ...raw };
+
+  const category = valueFrom(
+    source.category,
+    source.type,
+    source.eventType,
+    'General'
+  );
+
+  const registrationCount = Number(
+    valueFrom(
+      source.registrations,
+      source.registrationCount,
+      source.rsvpCount,
+      source.registered,
+      0
+    )
+  ) || 0;
+
+  return {
+    eventId: getEventId(source) || getEventId(localFallback),
+    title: valueFrom(source.title, source.eventTitle, source.name, 'Campus Event'),
+    society: valueFrom(source.society, source.organizer, source.host, source.club, source.societyName, 'Official Chapter'),
+    category,
+    mode: valueFrom(source.mode, source.format, source.eventMode, 'Offline'),
+    location: valueFrom(source.location, source.venue, source.place, 'Campus venue to be announced'),
+    eventDate: valueFrom(source.eventDate, source.date, source.startDate, source.start_time, source.startTime, 'Date to be announced'),
+    deadline: valueFrom(source.deadline, source.registrationDeadline, source.endDate, source.lastDate, 'Registration open'),
+    teamSize: valueFrom(source.teamSize, source.team_size, source.team, 'Individual / Team'),
+    registrations: registrationCount,
+    prize: valueFrom(source.prize, source.prizes, source.prizePool, source.reward, 'Certificates and recognition'),
+    about: valueFrom(source.about, source.description, source.details, source.summary, 'Details will be shared by the organizing team soon.'),
+    eligibility: valueFrom(source.eligibility, source.eligible, 'Open to eligible students as per organizer rules.'),
+    bannerImage: valueFrom(source.bannerImage, source.image, source.imageUrl, source.posterUrl, source.poster, getCategoryImage(category)),
+    tags: normaliseList(valueFrom(source.tags, source.keywords), [category, valueFrom(source.mode, 'Offline')]),
+    timeline: normaliseList(source.timeline, [
+      `Registration deadline: ${valueFrom(source.deadline, source.registrationDeadline, 'To be announced')}`,
+      `Event date: ${valueFrom(source.eventDate, source.date, 'To be announced')}`,
+      'Results / next steps will be announced by the organizers.'
+    ]),
+    rules: normaliseList(source.rules, [
+      'Participants must provide correct registration details.',
+      'Follow the schedule and instructions shared by the organizing society.',
+      'The organizer decision will be final for selection, prizes, and results.'
+    ]),
+    perks: normaliseList(valueFrom(source.perks, source.benefits), [
+      'Participation certificate',
+      'Campus exposure and peer networking',
+      'Learning experience with society mentors'
+    ]),
+    faqs: normaliseFaqs(source.faqs),
+    contactEmail: valueFrom(source.contactEmail, source.email, source.contact, 'organizers@igdtuw.ac.in')
+  };
+}
+
+function getDaysLeftLabel(deadline) {
+  const parsed = new Date(deadline);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return 'Registration Open';
+  }
+
+  const today = new Date();
+  parsed.setHours(23, 59, 59, 999);
+
+  const diffDays = Math.ceil((parsed - today) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return 'Deadline Passed';
+  if (diffDays === 0) return 'Last Day';
+  if (diffDays === 1) return '1 Day Left';
+  if (diffDays <= 30) return `${diffDays} Days Left`;
+
+  return `${Math.ceil(diffDays / 30)} Month Left`;
+}
+
+function renderList(items, className = 'detail-bullet-list') {
+  return `
+    <ul class="${className}">
+      ${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+    </ul>
+  `;
+}
+
+function getHashEventId() {
+  if (!window.location.hash) return '';
+
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  return params.get('event') || '';
+}
+
 // --- INITIALIZATION RUNTIME ---
 document.addEventListener("DOMContentLoaded", () => {
     const loader = document.getElementById('loading-screen');
