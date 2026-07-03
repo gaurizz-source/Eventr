@@ -326,25 +326,16 @@ function checkPersistentSession() {
 
 // Fetch global live opportunities directly from database table
 function fetchLiveOpportunities() {
-  fetch(`${API_BASE_URL}/events`)
-    .then(res => res.json())
-    .then(data => {
-      state.opportunities = Array.isArray(data)
-        ? data
-        : valueFrom(data.events, data.data, data.Items, []);
-
-      renderAllOpportunities();
-
-      const deepLinkedEventId = getHashEventId();
-      if (deepLinkedEventId) {
-        window.openEventDetails(deepLinkedEventId, { preserveHash: true });
-      }
-    })
-    .catch(err => {
-      console.error("Cloud Database Fetch Error:", err);
-      state.opportunities = [];
-      renderAllOpportunities();
-    });
+    fetch(`${API_BASE_URL}/events`)
+        .then(res => res.json())
+        .then(data => {
+            state.opportunities = data;
+            renderAllOpportunities();
+        })
+        .catch(err => {
+            console.error("Cloud Database Fetch Error:", err);
+            renderAllOpportunities();
+        });
 }
 
 // Fetch user registrations dynamically using verification tokens
@@ -398,42 +389,325 @@ window.switchView = function(viewName) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// Open standalone custom detail view parameters (Unstop Interface layout)
-window.openEventDetails = function(eventId) {
-    const dataset = state.opportunities.length > 0 ? state.opportunities : [
-        { eventId: "evt_01", title: "Innerve Hackathon 2026", society: "ACM Student Chapter", category: "Technical", registrations: 432 },
-        { eventId: "evt_02", title: "Taarangana Street Showdown", society: "Hypnotics Society", category: "Cultural", registrations: 189 }
-    ];
+// Close standalone event details page and return to student dashboard
+window.closeEventDetails = function() {
+    state.selectedEventId = null;
 
-    const opp = dataset.find(o => (o.eventId === eventId || o.id === eventId));
-    if (!opp) return;
-
-    state.selectedEventId = eventId;
-
-    // Map data variables directly to layout targets
-    if (document.getElementById('detail-title')) document.getElementById('detail-title').innerText = opp.title;
-    if (document.getElementById('detail-society')) document.getElementById('detail-society').innerText = `Hosted by ${opp.society || 'Official Chapter'}`;
-    if (document.getElementById('detail-category-badge')) document.getElementById('detail-category-badge').innerText = opp.category || 'General';
-    if (document.getElementById('detail-reg-count')) document.getElementById('detail-reg-count').innerText = opp.registrations || 0;
-
-    const regBtn = document.getElementById('detail-register-btn');
-    if (regBtn) {
-        const isReg = state.rsvps.includes(eventId);
-        if (isReg) {
-            regBtn.innerText = "Registered ✓";
-            regBtn.style.background = "#10b981";
-            regBtn.disabled = true;
-            regBtn.onclick = null;
-        } else {
-            regBtn.innerText = "Register Now";
-            regBtn.style.background = "#4f46e5";
-            regBtn.disabled = false;
-            regBtn.onclick = () => window.executeAwsRegistration(eventId);
-        }
+    if (window.location.hash.startsWith('#event=')) {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
     }
 
-    window.switchView('event-details');
+    window.switchView('student-dashboard');
 };
+
+// Copy shareable event link
+window.copyCurrentEventLink = function(eventId) {
+    const link = `${window.location.origin}${window.location.pathname}#event=${encodeURIComponent(eventId)}`;
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(link)
+            .then(() => {
+                window.showToast('Event link copied.', 'success');
+            })
+            .catch(() => {
+                window.showToast('Could not copy link. Copy it from the address bar.', 'error');
+            });
+    } else {
+        window.showToast('Copy this URL from the address bar.', 'success');
+    }
+};
+
+
+// Open standalone custom detail view parameters: Unstop-inspired layout
+window.openEventDetails = async function(eventId) {
+    const localEvent = findOpportunityById(eventId);
+
+    if (!localEvent) {
+        window.showToast('Event details could not be found.', 'error');
+        return;
+    }
+
+    state.selectedEventId = String(eventId);
+
+    // First render instantly using already-loaded card data
+    renderEventDetails(localEvent, { loading: true });
+
+    // Keep URL trackable without changing any backend logic
+    history.replaceState(null, '', `#event=${encodeURIComponent(eventId)}`);
+
+    // Use your existing view switch system
+    window.switchView('event-details');
+
+    // Try to fetch richer details from backend if endpoint exists.
+    // If backend endpoint does not exist, it safely falls back to local event data.
+    try {
+        const res = await fetch(`${API_BASE_URL}/event/${encodeURIComponent(eventId)}`);
+
+        if (!res.ok) {
+            throw new Error(`Single event API unavailable: ${res.status}`);
+        }
+
+        const payload = await res.json();
+
+        const remoteEvent = Array.isArray(payload)
+            ? payload[0]
+            : valueFrom(payload.event, payload.data, payload.Item, payload);
+
+        renderEventDetails(remoteEvent, { localFallback: localEvent });
+    } catch (err) {
+        console.warn('Using already-loaded event data for details page:', err.message);
+        renderEventDetails(localEvent);
+    }
+};
+
+// Render the complete Unstop-inspired details UI inside #event-detail-root
+function renderEventDetails(rawEvent, options = {}) {
+    const root = document.getElementById('event-detail-root');
+
+    if (!root) {
+        console.error('Missing #event-detail-root in index.html');
+        return;
+    }
+
+    const event = normaliseEvent(rawEvent, options.localFallback || {});
+    const isRegistered = state.rsvps.map(String).includes(String(event.eventId));
+
+    const statusText = isRegistered
+        ? 'You are registered'
+        : getDaysLeftLabel(event.deadline);
+
+    const buttonText = isRegistered
+        ? 'Registered ✓'
+        : 'Register Now';
+
+    const buttonClass = isRegistered
+        ? 'detail-primary-btn registered'
+        : 'detail-primary-btn';
+
+    const safeBanner = escapeHtml(event.bannerImage);
+
+    root.innerHTML = `
+        <div class="event-detail-shell">
+            <button class="detail-back-btn" type="button" onclick="window.closeEventDetails()">
+                <span>←</span> Back to Dashboard
+            </button>
+
+            <section class="event-detail-hero-card" style="background-image: linear-gradient(90deg, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.52)), url('${safeBanner}')">
+                <div class="detail-hero-content">
+                    <div class="detail-chip-row">
+                        <span class="detail-chip">${escapeHtml(event.mode)}</span>
+                        <span class="detail-chip light">${escapeHtml(event.category)}</span>
+                        <span class="detail-chip success">Registration Open</span>
+                    </div>
+
+                    <h1>${escapeHtml(event.title)}</h1>
+                    <p class="detail-organizer">Hosted by ${escapeHtml(event.society)}</p>
+
+                    <div class="detail-hero-meta-grid">
+                        <div class="detail-hero-meta-item">
+                            <span>📍</span>
+                            <div>
+                                <b>Location</b>
+                                <small>${escapeHtml(event.location)}</small>
+                            </div>
+                        </div>
+
+                        <div class="detail-hero-meta-item">
+                            <span>📅</span>
+                            <div>
+                                <b>Date</b>
+                                <small>${escapeHtml(event.eventDate)}</small>
+                            </div>
+                        </div>
+
+                        <div class="detail-hero-meta-item">
+                            <span>👥</span>
+                            <div>
+                                <b>Team Size</b>
+                                <small>${escapeHtml(event.teamSize)}</small>
+                            </div>
+                        </div>
+
+                        <div class="detail-hero-meta-item">
+                            <span>🏆</span>
+                            <div>
+                                <b>Prize</b>
+                                <small>${escapeHtml(event.prize)}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="detail-page-grid">
+                <article class="detail-main-card">
+                    <nav class="detail-tabs" aria-label="Event detail sections">
+                        <a href="#detail-about">Details</a>
+                        <a href="#detail-dates">Dates & Deadlines</a>
+                        <a href="#detail-prizes">Prizes</a>
+                        <a href="#detail-rules">Rules</a>
+                        <a href="#detail-faqs">FAQs</a>
+                    </nav>
+
+                    <section id="detail-about" class="detail-section-block">
+                        <div class="detail-section-heading">
+                            <span class="heading-dot"></span>
+                            <h2>About the Event</h2>
+                        </div>
+
+                        <p class="detail-body-text">${escapeHtml(event.about)}</p>
+
+                        <div class="detail-tag-list">
+                            ${event.tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}
+                        </div>
+                    </section>
+
+                    <section id="detail-dates" class="detail-section-block">
+                        <div class="detail-section-heading">
+                            <span class="heading-dot"></span>
+                            <h2>Dates & Deadlines</h2>
+                        </div>
+
+                        <div class="detail-info-grid">
+                            <div class="detail-info-card">
+                                <small>Registration Deadline</small>
+                                <b>${escapeHtml(event.deadline)}</b>
+                            </div>
+
+                            <div class="detail-info-card">
+                                <small>Event Date</small>
+                                <b>${escapeHtml(event.eventDate)}</b>
+                            </div>
+
+                            <div class="detail-info-card">
+                                <small>Mode</small>
+                                <b>${escapeHtml(event.mode)}</b>
+                            </div>
+                        </div>
+
+                        ${renderList(event.timeline, 'detail-timeline-list')}
+                    </section>
+
+                    <section id="detail-prizes" class="detail-section-block">
+                        <div class="detail-section-heading">
+                            <span class="heading-dot"></span>
+                            <h2>Prizes and Perks</h2>
+                        </div>
+
+                        <div class="detail-prize-card">
+                            <div class="prize-icon">🏆</div>
+                            <div>
+                                <small>Rewards</small>
+                                <b>${escapeHtml(event.prize)}</b>
+                            </div>
+                        </div>
+
+                        ${renderList(event.perks)}
+                    </section>
+
+                    <section id="detail-rules" class="detail-section-block">
+                        <div class="detail-section-heading">
+                            <span class="heading-dot"></span>
+                            <h2>Eligibility & Rules</h2>
+                        </div>
+
+                        <p class="detail-body-text">
+                            <b>Eligibility:</b> ${escapeHtml(event.eligibility)}
+                        </p>
+
+                        ${renderList(event.rules)}
+                    </section>
+
+                    <section id="detail-faqs" class="detail-section-block">
+                        <div class="detail-section-heading">
+                            <span class="heading-dot"></span>
+                            <h2>FAQs & Discussions</h2>
+                        </div>
+
+                        ${
+                            event.faqs.length
+                                ? event.faqs.map(faq => `
+                                    <details class="detail-faq-item">
+                                        <summary>${escapeHtml(faq.question)}</summary>
+                                        <p>${escapeHtml(faq.answer)}</p>
+                                    </details>
+                                `).join('')
+                                : '<p class="detail-body-text">No FAQs have been added yet. Contact the organizing team for more details.</p>'
+                        }
+                    </section>
+                </article>
+
+                <aside class="detail-sidebar-card">
+                    <div class="detail-deadline-pill">${escapeHtml(statusText)}</div>
+
+                    <div class="detail-welcome-box">
+                        <span class="welcome-emoji">👋</span>
+                        <div>
+                            <b>Hi Welcome!</b>
+                            <small>Please register below.</small>
+                        </div>
+                    </div>
+
+                    <button id="detail-register-btn" class="${buttonClass}" type="button" ${isRegistered ? 'disabled' : ''}>
+                        ${buttonText}
+                    </button>
+
+                    <div class="detail-registered-count">
+                        👥 <span>${escapeHtml(event.registrations)}</span> Registered
+                    </div>
+
+                    <div class="detail-side-divider"></div>
+
+                    <div class="detail-side-meta">
+                        <span>📅</span>
+                        <div>
+                            <small>Deadline</small>
+                            <b>${escapeHtml(event.deadline)}</b>
+                        </div>
+                    </div>
+
+                    <div class="detail-side-meta">
+                        <span>📍</span>
+                        <div>
+                            <small>Venue</small>
+                            <b>${escapeHtml(event.location)}</b>
+                        </div>
+                    </div>
+
+                    <div class="detail-side-meta">
+                        <span>✉️</span>
+                        <div>
+                            <small>Contact</small>
+                            <b>${escapeHtml(event.contactEmail)}</b>
+                        </div>
+                    </div>
+
+                    <button id="detail-share-btn" class="detail-secondary-btn" type="button">
+                        Share Event
+                    </button>
+
+                    ${options.loading ? '<p class="detail-loading-note">Refreshing details from server...</p>' : ''}
+                </aside>
+            </div>
+        </div>
+    `;
+
+    const registerBtn = document.getElementById('detail-register-btn');
+
+    if (registerBtn && !isRegistered) {
+        registerBtn.addEventListener('click', () => {
+            window.executeAwsRegistration(event.eventId);
+        });
+    }
+
+    const shareBtn = document.getElementById('detail-share-btn');
+
+    if (shareBtn) {
+        shareBtn.addEventListener('click', () => {
+            window.copyCurrentEventLink(event.eventId);
+        });
+    }
+}
 
 // Process actual RSVP network pipeline out to AWS endpoints
 window.executeAwsRegistration = function(eventId) {
