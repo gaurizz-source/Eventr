@@ -326,16 +326,25 @@ function checkPersistentSession() {
 
 // Fetch global live opportunities directly from database table
 function fetchLiveOpportunities() {
-    fetch(`${API_BASE_URL}/events`)
-        .then(res => res.json())
-        .then(data => {
-            state.opportunities = data;
-            renderAllOpportunities();
-        })
-        .catch(err => {
-            console.error("Cloud Database Fetch Error:", err);
-            renderAllOpportunities();
-        });
+  fetch(`${API_BASE_URL}/events`)
+    .then(res => res.json())
+    .then(data => {
+      state.opportunities = Array.isArray(data)
+        ? data
+        : valueFrom(data.events, data.data, data.Items, []);
+
+      renderAllOpportunities();
+
+      const deepLinkedEventId = getHashEventId();
+      if (deepLinkedEventId) {
+        window.openEventDetails(deepLinkedEventId, { preserveHash: true });
+      }
+    })
+    .catch(err => {
+      console.error("Cloud Database Fetch Error:", err);
+      state.opportunities = [];
+      renderAllOpportunities();
+    });
 }
 
 // Fetch user registrations dynamically using verification tokens
