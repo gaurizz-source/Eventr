@@ -16,7 +16,8 @@ const state = {
   activeView: 'student-dashboard',
   currentAuthMode: 'login', // Tracks active form state context ('login' or 'register')
   rsvps: [], 
-  opportunities: [] 
+  opportunities: [],
+  selectedEventId: null // Tracks which event details page is open
 };
 
 // --- INITIALIZATION RUNTIME ---
@@ -48,7 +49,7 @@ function checkPersistentSession() {
 
                 state.currentUser = {
                     name: userProfile['name'] || "User",
-                    email: cognitoUser.getUsername(),
+                    email: userProfile['email'] || cognitoUser.getUsername(), // FIXED: Pulls true email string instead of UUID string
                     role: userProfile['custom:role'] || 'Student',
                     branch: userProfile['custom:branch'] || 'CSE',
                     year: userProfile['custom:year'] || '2026'
@@ -60,15 +61,6 @@ function checkPersistentSession() {
                 // Refresh UI with user details
                 updateNavProfile();
                 fetchUserRSVPs();
-                
-                // Stay on current dashboard view, don't kick user out
-              // Light up the correct button green based on the current active view context
-  if (viewName === 'student-dashboard' && studentBtn) {
-    studentBtn.classList.add('active'); //  FIXED
-  }
-  if (viewName === 'host-dashboard' && hostBtn) {
-    hostBtn.classList.add('active');    //  FIXED
-  }
             });
         });
     } else {
@@ -108,33 +100,140 @@ function fetchUserRSVPs() {
     .catch(err => console.error("Error syncing RSVPs:", err));
 }
 
-// Routing System between Views
-// Routing System between Views (Fixed Green Active Accent Class)
+// Routing System between Views (Fixed Layout Visibility Architecture)
 window.switchView = function(viewName) {
-  // Remove active styling from all view content blocks
-  document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+  state.activeView = viewName;
   
-  // Remove active styling from navigation buttons
+  // 1. Hide ALL view container elements completely first
+  if (document.getElementById('view-student-dashboard')) document.getElementById('view-student-dashboard').style.display = 'none';
+  if (document.getElementById('view-society-portal')) document.getElementById('view-society-portal').style.display = 'none';
+  if (document.getElementById('view-auth-page')) document.getElementById('view-auth-page').style.display = 'none';
+  if (document.getElementById('view-event-details')) document.getElementById('view-event-details').style.display = 'none';
+
+  // Remove navigation highlights
   const studentBtn = document.getElementById('btn-nav-student');
   const hostBtn = document.getElementById('btn-nav-host');
   if (studentBtn) studentBtn.classList.remove('active');
   if (hostBtn) hostBtn.classList.remove('active');
 
-  state.activeView = viewName;
-  
-  // Show the requested container screen
+  // 2. Show ONLY the single targeted interface screen
   const targetEl = document.getElementById('view-' + viewName);
-  if (targetEl) targetEl.classList.add('active');
+  if (targetEl) {
+      targetEl.style.display = 'block';
+  }
 
-  // Light up the correct button green based on the current active view context
+  // Light up navigation button highlights based on perspective
   if (viewName === 'student-dashboard' && studentBtn) {
     studentBtn.classList.add('active');
+    renderAllOpportunities();
   }
   if (viewName === 'host-dashboard' && hostBtn) {
     hostBtn.classList.add('active');
   }
   
   window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// Open standalone custom detail view parameters (Unstop Interface layout)
+window.openEventDetails = function(eventId) {
+    const dataset = state.opportunities.length > 0 ? state.opportunities : [
+        { eventId: "evt_01", title: "Innerve Hackathon 2026", society: "ACM Student Chapter", category: "Technical", registrations: 432 },
+        { eventId: "evt_02", title: "Taarangana Street Showdown", society: "Hypnotics Society", category: "Cultural", registrations: 189 }
+    ];
+
+    const opp = dataset.find(o => (o.eventId === eventId || o.id === eventId));
+    if (!opp) return;
+
+    state.selectedEventId = eventId;
+
+    // Map data variables directly to layout targets
+    if (document.getElementById('detail-title')) document.getElementById('detail-title').innerText = opp.title;
+    if (document.getElementById('detail-society')) document.getElementById('detail-society').innerText = `Hosted by ${opp.society || 'Official Chapter'}`;
+    if (document.getElementById('detail-category-badge')) document.getElementById('detail-category-badge').innerText = opp.category || 'General';
+    if (document.getElementById('detail-reg-count')) document.getElementById('detail-reg-count').innerText = opp.registrations || 0;
+
+    const regBtn = document.getElementById('detail-register-btn');
+    if (regBtn) {
+        const isReg = state.rsvps.includes(eventId);
+        if (isReg) {
+            regBtn.innerText = "Registered ✓";
+            regBtn.style.background = "#10b981";
+            regBtn.disabled = true;
+            regBtn.onclick = null;
+        } else {
+            regBtn.innerText = "Register Now";
+            regBtn.style.background = "#4f46e5";
+            regBtn.disabled = false;
+            regBtn.onclick = () => window.executeAwsRegistration(eventId);
+        }
+    }
+
+    window.switchView('event-details');
+};
+
+// Process actual RSVP network pipeline out to AWS endpoints
+window.executeAwsRegistration = function(eventId) {
+    if (!state.currentUser) {
+        window.showToast("Please sign in to register for this event!", "error");
+        window.switchView('auth-page');
+        return;
+    }
+
+    const idToken = localStorage.getItem('evntr_id_token');
+    const regBtn = document.getElementById('detail-register-btn');
+    
+    if (regBtn) {
+        regBtn.innerText = "Processing...";
+        regBtn.disabled = true;
+    }
+
+    // 👇 UPDATED: Logs matching the exact keys your AWS Lambda expects
+    console.log("Sending RSVP Payload:", { 
+        eventId: eventId,
+        studentName: state.currentUser.name,
+        studentEmail: state.currentUser.email 
+    });
+
+    fetch(`${API_BASE_URL}/rsvp`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': idToken
+        },
+        // 👇 FIXED: Changed keys to match your backend validation rules perfectly
+        body: JSON.stringify({
+            eventId: eventId,
+            studentName: state.currentUser.name,
+            studentEmail: state.currentUser.email
+        })
+    })
+    .then(async res => {
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`AWS Server Error (${res.status}): ${errorText}`);
+        }
+        return res.json();
+    })
+    .then(() => {
+        window.showToast("Registration Confirmed! Slot secured.", "success");
+        state.rsvps.push(eventId);
+        renderRsvps();
+        
+        if (regBtn) {
+            regBtn.innerText = "Registered ✓";
+            regBtn.style.background = "#10b981";
+            regBtn.disabled = true;
+            regBtn.onclick = null;
+        }
+    })
+    .catch(err => {
+        console.error("🔴 AWS Sync Detailed Failure:", err.message);
+        window.showToast("Could not complete registration. Try again.", "error");
+        if (regBtn) {
+            regBtn.innerText = "Register Now";
+            regBtn.disabled = false;
+        }
+    });
 };
 
 // Dynamic Authentication Screen Tab Control Engine
@@ -168,7 +267,7 @@ window.toggleAuthForm = function(formType) {
   }
 };
 
-// UNIFIED HANDLER FOR SIGN IN AND SIGN UP (Clears up any function name conflicts)
+// Unified Submission Interceptor
 window.handleAuthWorkflowSubmit = function(e) {
     e.preventDefault();
     
@@ -176,7 +275,6 @@ window.handleAuthWorkflowSubmit = function(e) {
     const password = document.getElementById('auth-core-password').value;
 
     if (state.currentAuthMode === 'register') {
-        // --- COGNITO SIGNUP WORKFLOW ---
         const name = document.getElementById('auth-stud-name').value.trim();
         const branch = document.getElementById('auth-stud-branch').value;
         const year = document.getElementById('auth-stud-year').value;
@@ -217,7 +315,6 @@ window.handleAuthWorkflowSubmit = function(e) {
         });
 
     } else {
-        // --- COGNITO SIGN IN WORKFLOW ---
         window.showToast("Verifying credentials database...", "success");
         
         const authDetails = new AuthenticationDetails({ Username: email, Password: password });
@@ -225,13 +322,11 @@ window.handleAuthWorkflowSubmit = function(e) {
 
         cognitoUser.authenticateUser(authDetails, {
             onSuccess: (result) => {
-                // Save security session tokens locally
                 localStorage.setItem('evntr_id_token', result.getIdToken().getJwtToken());
                 localStorage.setItem('evntr_access_token', result.getAccessToken().getJwtToken());
                 
                 window.showToast("Welcome back! Access granted.", "success");
                 
-                // Fetch attributes immediately so that the profile updates to GK instantly
                 cognitoUser.getUserAttributes((err, attributes) => {
                     if (err) {
                         console.error("Attributes fetch fallback error:", err);
@@ -244,14 +339,13 @@ window.handleAuthWorkflowSubmit = function(e) {
                         
                         state.currentUser = {
                             name: userProfile['name'] || "Gauri Kumari",
-                            email: cognitoUser.getUsername(),
+                            email: userProfile['email'] || cognitoUser.getUsername(), // FIXED: Pulls true email string instead of UUID string
                             role: userProfile['custom:role'] || 'Student',
                             branch: userProfile['custom:branch'] || 'CSE',
                             year: userProfile['custom:year'] || '2026'
                         };
                     }
                     
-                    // Render the GK profile avatar badge and redirect to dashboard
                     updateNavProfile();
                     fetchUserRSVPs();
                     window.switchView('student-dashboard');
@@ -296,13 +390,12 @@ function handleSignOutLocal() {
     window.switchView('student-dashboard');
 }
 
-// Injects the dynamic profile button structure into your HTML placeholder wrapper
+// Injects profile layout badges
 function updateNavProfile() {
   const container = document.getElementById('nav-auth-section');
   if (!container) return;
 
   if (state.currentUser) {
-    // Falls back to "GK" if names aren't processed yet
     const initials = state.currentUser.name ? state.currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : "GK";
     
     container.innerHTML = `
@@ -312,11 +405,11 @@ function updateNavProfile() {
       </div>
     `;
   } else {
-    container.innerHTML = `<button class="nav-btn auth-btn" onclick="switchView('auth-page')">Log In / Sign Up</button>`;
+    container.innerHTML = `<button class="nav-btn auth-btn" onclick="window.switchView('auth-page')">Log In / Sign Up</button>`;
   }
 }
 
-// Template builder for the event dashboard grid cards
+// Template builder for the event dashboard cards with accurate tracking event loops
 function renderAllOpportunities() {
   const allGrid = document.getElementById('opportunities-root');
   if (!allGrid) return;
@@ -341,7 +434,7 @@ function renderAllOpportunities() {
           <p style="font-size:0.8rem; margin:0.5rem 0;">Date: ${opp.eventDate || '2026'}</p>
           <div class="card-footer">
             <span class="registrations-count">${opp.registrations || 0} Registered</span>
-            <button class="btn-card-action">${isReg ? "Registered ✓" : "View details"}</button>
+            <button class="btn-card-action" onclick="window.openEventDetails('${currentId}')">View details</button>
           </div>
         </div>
       </div>
@@ -350,7 +443,7 @@ function renderAllOpportunities() {
   allGrid.innerHTML = allHtml;
 }
 
-// Render registered events into sidebar panels
+// Render active items directly to left panel drawers
 function renderRsvps() {
   const root = document.getElementById('rsvp-list-root');
   const badge = document.getElementById('rsvp-count-badge');
