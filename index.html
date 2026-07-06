@@ -79,39 +79,17 @@
             <option value="workshop">Workshop</option>
             <option value="seminar">Seminar</option>
             <option value="webinar">Webinar</option>
-            <option value="conference">Conference</option>
-            <option value="tech-talk">Tech Talk</option>
             <option value="coding">Coding Contest</option>
             <option value="quiz">Quiz</option>
             <option value="cultural">Cultural</option>
             <option value="fest">College Fest</option>
-            <option value="music">Music</option>
-            <option value="dance">Dance</option>
-            <option value="drama">Drama/Theatre</option>
-            <option value="art">Art & Design</option>
-            <option value="photography">Photography</option>
-            <option value="sports">Sports</option>
-            <option value="gaming">Gaming / Esports</option>
-            <option value="debate">Debate</option>
-            <option value="literary">Literary</option>
-            <option value="entrepreneurship">Entrepreneurship</option>
-            <option value="startup">Startup Pitch</option>
-            <option value="placement">Placement Drive</option>
-            <option value="internship">Internship Fair</option>
-            <option value="career">Career Guidance</option>
-            <option value="networking">Networking</option>
-            <option value="volunteering">Volunteering</option>
-            <option value="social">Social Service</option>
-            <option value="awareness">Awareness Campaign</option>
-            <option value="orientation">Orientation</option>
-            <option value="alumni">Alumni Meet</option>
+             <option value="fest">Technical</option>
           </select>
         </div>
       </div>
 
       <div class="dashboard-layout" style="margin-top: 3.5rem;">
         <div class="main-content-flow">
-          
           <div class="opportunities-section">
             <div class="section-header">
               <h2 class="section-title">New Events</h2>
@@ -133,49 +111,164 @@
         </aside>
       </div>
     </div>
-  <!-- YHA SE VIEW DETAILs kA CODE HAI -->
-    <div id="view-event-details" class="view-container">
-  <div style="max-width: 1000px; margin: 2rem auto; padding: 0 1rem;">
-    
-    <button onclick="window.switchView('student-dashboard')" style="background: none; border: none; color: #4f46e5; font-weight: 600; cursor: pointer; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-      ← Back to Dashboard
-    </button>
 
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; align-items: start;">
+
+    <div id="view-host-dashboard" class="view-container" style="display: none;">
       
-      <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-        <div id="detail-category-badge" style="display: inline-block; background: #e0e7ff; color: #4f46e5; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem;">Technical</div>
-        <h1 id="detail-title" style="font-size: 2.25rem; color: #1e293b; margin-bottom: 0.5rem;">Event Title</h1>
-        <p id="detail-society" style="color: #64748b; font-weight: 500; margin-bottom: 2rem;">Hosted by Society Name</p>
-        
-        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin-bottom: 2rem;">
-        
-        <h3>About the Event</h3>
-        <p style="color: #475569; line-height: 1.6; margin-top: 0.5rem;">
-          Get ready to showcase your skills in this competitive arena. Bring your best ideas, collaborate with peers, and win exciting prizes! Detailed rules, timelines, and guidelines will be shared by the organizing team.
-        </p>
-      </div>
-
-      <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); position: sticky; top: 2rem; border: 1px solid #e2e8f0;">
-        <div style="font-weight: 700; color: #ef4444; margin-bottom: 1rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.25rem;">
-          ⏱️ Registration Open
+      <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; margin-top: 2rem;">
+        <div>
+          <h2 class="section-title">Society Management Workspace</h2>
+          <p class="section-subtitle">Deploy operational challenges, compile active participant arrays, and manage event schedules.</p>
         </div>
-        
-        <button id="detail-register-btn" class="form-button" style="background: #4f46e5; color: white; width: 100%; border: none; padding: 0.8rem; border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 1rem;">
-          Register Now
+        <button type="button" class="nav-btn auth-btn" onclick="window.toggleCreateEventForm()" style="margin: 0; padding: 0.6rem 1.25rem;">
+          + Launch New Event
         </button>
+      </div>
 
-        <div style="display: flex; align-items: center; gap: 0.5rem; color: #64748b; font-size: 0.85rem; justify-content: center;">
-          👥 <span id="detail-reg-count">0</span> Students Registered
+      <!-- VIEW: UPGRADED LAUNCH EVENT PANEL -->
+<div id="launch-event-panel" style="display: none; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+  <h3 style="margin-bottom: 1.5rem; color: #0f172a; font-size: 1.25rem; font-weight: 700;">Launch New Campus Event</h3>
+  <form id="create-event-form" onsubmit="window.handleCreateEventSubmit(event)" style="display: flex; flex-direction: column; gap: 1.25rem;">
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div>
+        <label style="font-size: 0.85rem; font-weight: 600; color: #475569;">Event Title</label>
+        <input type="text" id="form-event-title" required style="width: 100%; padding: 0.65rem; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 0.25rem;">
+      </div>
+      <div>
+        <label style="font-size: 0.85rem; font-weight: 600; color: #475569;">Hosting Society</label>
+        <input type="text" id="form-event-society" required style="width: 100%; padding: 0.65rem; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 0.25rem;">
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div>
+        <label style="font-size: 0.85rem; font-weight: 600; color: #475569;">Category</label>
+        <select id="form-event-category" style="width: 100%; padding: 0.65rem; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 0.25rem;">
+          <option value="hackathon">Hackathon</option>
+            <option value="workshop">Workshop</option>
+            <option value="seminar">Seminar</option>
+            <option value="webinar">Webinar</option>
+            <option value="coding">Coding Contest</option>
+            <option value="quiz">Quiz</option>
+            <option value="cultural">Cultural</option>
+            <option value="fest">College Fest</option>
+             <option value="fest">Technical</option>
+             <option value="fest">Sports</option>
+
+        </select>
+      </div>
+      <div>
+        <label style="font-size: 0.85rem; font-weight: 600; color: #475569;">Event Banner Image URL</label>
+        <input type="url" id="form-event-image" placeholder="https://example.com/banner.png" style="width: 100%; padding: 0.65rem; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 0.25rem;">
+      </div>
+    </div>
+
+    <!-- DOUBLE DATE PICKER: START AND END DATE -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div>
+        <label style="font-size: 0.85rem; font-weight: 600; color: #475569;">Starting Date</label>
+        <input type="date" id="form-event-start-date" required style="width: 100%; padding: 0.65rem; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 0.25rem;">
+      </div>
+      <div>
+        <label style="font-size: 0.85rem; font-weight: 600; color: #475569;">Ending Date</label>
+        <input type="date" id="form-event-end-date" required style="width: 100%; padding: 0.65rem; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 0.25rem;">
+      </div>
+    </div>
+
+    <!-- ONLINE PAYMENT MANAGEMENT SECTION -->
+    <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+      <label style="font-size: 0.85rem; font-weight: 600; color: #475569; display: flex; align-items: center; gap: 0.5rem;">
+        <input type="checkbox" id="form-event-requires-payment" onchange="document.getElementById('payment-details-wrap').style.display = this.checked ? 'grid' : 'none'">
+        This event requires Online Payment / Registration Fee
+      </label>
+      
+      <div id="payment-details-wrap" style="display: none; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem;">
+        <div>
+          <label style="font-size: 0.8rem; font-weight: 600; color: #64748b;">Amount (INR)</label>
+          <input type="number" id="form-event-amount" placeholder="e.g. 150" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 0.25rem;">
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; font-weight: 600; color: #64748b;">Payment Link / UPI ID</label>
+          <input type="text" id="form-event-upi" placeholder="paytm@upi / URL" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 0.25rem;">
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 0.5rem;">
+      <button type="button" onclick="window.toggleCreateEventForm()" style="background: #e2e8f0; color: #475569; border: none; padding: 0.65rem 1.25rem; border-radius: 6px; cursor: pointer; font-weight: 600;">Cancel</button>
+      <button type="submit" style="background: #4f46e5; color: white; border: none; padding: 0.65rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600;">Publish Event</button>
+    </div>
+  </form>
+</div>
+
+      <div class="society-host-layout" style="display: block;">
+        <div class="host-tabs-navigation" style="display: flex; gap: 1rem; border-bottom: 2px solid #e2e8f0; margin-bottom: 2rem;">
+            <button type="button" class="host-tab-nav-btn active" id="tab-btn-active" onclick="window.switchHostTimeline('active')" style="cursor: pointer; padding: 0.75rem 1rem; border: none; background: none; font-size: 0.95rem;">
+              Active Events
+            </button>
+            <button type="button" class="host-tab-nav-btn" id="tab-btn-future" onclick="window.switchHostTimeline('future')" style="cursor: pointer; padding: 0.75rem 1rem; border: none; background: none; font-size: 0.95rem;">
+              Future / Upcoming
+            </button>
+            <button type="button" class="host-tab-nav-btn" id="tab-btn-past" onclick="window.switchHostTimeline('past')" style="cursor: pointer; padding: 0.75rem 1rem; border: none; background: none; font-size: 0.95rem;">
+              Past Logs (Archived)
+            </button>
+          </div>
+          
+          <div class="opportunities-grid" id="society-opportunities-root"></div>
+        </div>
+      </div>
+    </div>
+
+
+ <!-- VIEW 5: BIGGER SPACE PREMIUM EVENT DETAILS -->
+<div id="view-event-details" style="display: none; max-width: 900px; margin: 2rem auto; padding: 0 1rem;">
+  <button onclick="window.switchView('student-dashboard')" style="background: none; border: none; color: #4f46e5; font-weight: 600; cursor: pointer; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.25rem;">← Back to Opportunities</button>
+  
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);">
+    <!-- BIG HERO IMAGE BANNER -->
+    <div style="width: 100%; height: 350px; background: #f1f5f9; position: relative;">
+      <img id="detail-hero-image" src="" alt="Event Banner" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+      <span id="detail-category-badge" style="position: absolute; top: 1rem; left: 1rem; background: #4f46e5; color: white; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Technical</span>
+    </div>
+
+    <!-- MAIN BODY SPACE -->
+    <div style="padding: 2.5rem;">
+      <span id="detail-society" style="color: #64748b; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">ACM Student Chapter</span>
+      <h1 id="detail-title" style="font-size: 2.25rem; font-weight: 800; color: #0f172a; margin-top: 0.25rem; margin-bottom: 1rem; line-height: 1.2;">Innerve Hackathon 2026</h1>
+      
+      <!-- TIMELINE INFO BOX -->
+      <div style="display: flex; gap: 2rem; background: #f8fafc; padding: 1.25rem; border-radius: 10px; margin-bottom: 2rem; border: 1px solid #f1f5f9;">
+        <div>
+          <p style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin: 0;">Timeline Duration</p>
+          <p id="detail-duration-dates" style="font-size: 0.95rem; color: #334155; font-weight: 600; margin: 0.25rem 0 0 0;">July 6, 2026 - July 8, 2026</p>
+        </div>
+        <div style="border-left: 2px solid #e2e8f0; padding-left: 2rem;">
+          <p style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin: 0;">Total Applications</p>
+          <p style="font-size: 0.95rem; color: #334155; font-weight: 600; margin: 0.25rem 0 0 0;"><span id="detail-reg-count">0</span> Registered</p>
         </div>
       </div>
 
+      <!-- PREMIUM ONLINE PAYMENT BAR CONTAINER -->
+      <div id="detail-payment-notice-bar" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1.25rem; border-radius: 10px; margin-bottom: 2rem; align-items: center; justify-content: space-between;">
+        <div>
+          <span style="color: #166534; font-weight: 700; font-size: 0.9rem; display: block;">Entry Registration Fee Required</span>
+          <span style="color: #15803d; font-size: 0.85rem;">Amount to pay: <b>INR <span id="detail-payment-amount">0</span></b> via UPI (<span id="detail-payment-upi">N/A</span>)</span>
+        </div>
+        <div style="background: #166534; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">ONLINE FEE</div>
+      </div>
+
+      <!-- ACTION CONTROL BAR -->
+      <div style="padding-top: 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.85rem; color: #64748b;">* Verified via evntr Identity Core Architecture.</span>
+        <button id="detail-register-btn" style="background: #4f46e5; color: white; border: none; padding: 0.85rem 2rem; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s;">Register Now</button>
+      </div>
     </div>
   </div>
 </div>
-<!-- YHA TAK  -->
 
-    <div id="view-auth-page" class="view-container">
+
+    <div id="view-auth-page" class="view-container" style="display: none;">
       <div class="auth-container">
         <div class="auth-toggle-tabs">
           <button class="auth-toggle-tab active" id="auth-tab-login" onclick="toggleAuthForm('login')">Sign In</button>
@@ -192,7 +285,7 @@
               </div>
               <div class="form-group" style="margin-bottom: 1.25rem;">
                 <label class="form-label">Branch Track</label>
-                <select class="form-select" id="auth-stud-branch" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid #cbd5e1;">
+                <select class="form-select" id="auth-stud-branch" style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid #cbd5e1; background: white;">
                   <option value="CSE">CSE (Computer Science & Eng.)</option>
                   <option value="IT">IT (Information Technology)</option>
                   <option value="ECE">ECE (Electronics & Comm. Eng.)</option>
@@ -220,43 +313,20 @@
       </div>
     </div>
 
-    <div id="view-host-dashboard" class="view-container">
-      <div class="section-header">
-        <h2 class="section-title">Society Management Workspace</h2>
-        <p class="section-subtitle">Deploy operational challenges, compile active participant arrays, and manage event schedules.</p>
-      </div>
-
-      <div class="society-host-layout">
-        <div>
-          <div class="host-tabs-navigation">
-            <button class="host-tab-nav-btn active">Active Events</button>
-            <button class="host-tab-nav-btn">Archived Logs</button>
-          </div>
-          
-          <div class="host-events-grid">
-            <div class="host-event-card">
-              <div class="host-card-top">
-                <div class="host-card-info">
-                  <h4 class="host-card-title">Innerve Hackathon 2026</h4>
-                  <span class="host-card-society">ACM Chapter</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </main>
 
-  <footer>
-    <div class="footer-content">
+  <footer style="background: #0f172a; color: #ffffff; padding: 3rem 2rem 1.5rem 2rem; margin-top: 6rem; width: 100%; position: relative; clear: both; box-sizing: border-box;">
+    <div class="footer-content" style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem;">
       <div class="footer-brand">
-        <span class="footer-title">evntr Platform</span>
-        <p class="footer-desc">The synchronized portal interface engineered explicitly to map, manage, and coordinate student capabilities across IGDTUW.</p>
+        <span class="footer-title" style="font-size: 1.25rem; font-weight: 800; color: #ffffff; display: block; margin-bottom: 0.5rem; letter-spacing: -0.025em;">evntr Platform</span>
+        <p class="footer-desc" style="color: #94a3b8; font-size: 0.875rem; line-height: 1.5; max-width: 600px; margin: 0;">
+          The synchronized portal interface engineered explicitly to map, manage, and coordinate student capabilities across IGDTUW.
+        </p>
       </div>
-    </div>
-    <div class="footer-bottom">
-      &copy; 2026 IGDTUW Opportunity & Event Tracking Platform. Built for excellence.
+      
+      <div class="footer-bottom" style="border-top: 1px solid #334155; padding-top: 1.5rem; margin-top: 1rem; text-align: center; color: #64748b; font-size: 0.8rem; font-weight: 500;">
+        &copy; 2026 IGDTUW Opportunity & Event Tracking Platform. Built for excellence.
+      </div>
     </div>
   </footer>
 

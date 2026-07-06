@@ -14,10 +14,10 @@ const API_BASE_URL = awsConfig.ApiBaseUrl;
 const state = {
   currentUser: null, 
   activeView: 'student-dashboard',
-  currentAuthMode: 'login', // Tracks active form state context ('login' or 'register')
+  currentAuthMode: 'login', 
   rsvps: [], 
   opportunities: [],
-  selectedEventId: null // Tracks which event details page is open
+  selectedEventId: null 
 };
 
 // --- INITIALIZATION RUNTIME ---
@@ -30,7 +30,6 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchLiveOpportunities();
 });
 
-// Checks if user has an active valid persistent login session stored on refresh
 function checkPersistentSession() {
     const cognitoUser = userPool.getCurrentUser();
     if (cognitoUser) {
@@ -49,7 +48,7 @@ function checkPersistentSession() {
 
                 state.currentUser = {
                     name: userProfile['name'] || "User",
-                    email: userProfile['email'] || cognitoUser.getUsername(), // FIXED: Pulls true email string instead of UUID string
+                    email: userProfile['email'] || cognitoUser.getUsername(),
                     role: userProfile['custom:role'] || 'Student',
                     branch: userProfile['custom:branch'] || 'CSE',
                     year: userProfile['custom:year'] || '2026'
@@ -58,7 +57,6 @@ function checkPersistentSession() {
                 localStorage.setItem('evntr_id_token', session.getIdToken().getJwtToken());
                 localStorage.setItem('evntr_access_token', session.getAccessToken().getJwtToken());
                 
-                // Refresh UI with user details
                 updateNavProfile();
                 fetchUserRSVPs();
             });
@@ -69,21 +67,35 @@ function checkPersistentSession() {
     }
 }
 
-// Fetch global live opportunities directly from database table
 function fetchLiveOpportunities() {
     fetch(`${API_BASE_URL}/events`)
         .then(res => res.json())
         .then(data => {
-            state.opportunities = data;
+            // Agar server se data empty array aaye, tabhi core mock seed inject hoga
+            if (data && data.length > 0) {
+                state.opportunities = data;
+            } else {
+                state.opportunities = getInitialMockSeed();
+            }
             renderAllOpportunities();
+            window.switchHostTimeline('active'); 
         })
         .catch(err => {
-            console.error("Cloud Database Fetch Error:", err);
+            console.error("Cloud Database Fetch Error, fallback to seed:", err);
+            state.opportunities = getInitialMockSeed();
             renderAllOpportunities();
+            window.switchHostTimeline('active');
         });
 }
 
-// Fetch user registrations dynamically using verification tokens
+function getInitialMockSeed() {
+    return [
+        { eventId: "evt_m1", id: "evt_m1", title: "Tech Innovation Summit 2026", society: "IEEE Core Team", category: "Technical", eventDate: "2026-07-06", registrations: 47, imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800", isPaid: false },
+        { eventId: "evt_m2", id: "evt_m2", title: "Code Craft Hackathon", society: "ACM Chapter", category: "Technical", eventDate: "2026-08-15", registrations: 12, imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800", isPaid: false },
+        { eventId: "evt_m3", id: "evt_m3", title: "Taarangana Street Showdown", society: "Hypnotics Society", category: "Cultural", eventDate: "2026-07-01", registrations: 189, imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800", isPaid: false }
+    ];
+}
+
 function fetchUserRSVPs() {
     const idToken = localStorage.getItem('evntr_id_token');
     if (!idToken || !state.currentUser) return;
@@ -100,57 +112,63 @@ function fetchUserRSVPs() {
     .catch(err => console.error("Error syncing RSVPs:", err));
 }
 
-// Routing System between Views (Fixed Layout Visibility Architecture)
+// Global Router Engine
 window.switchView = function(viewName) {
   state.activeView = viewName;
   
-  // 1. Hide ALL view container elements completely first
   if (document.getElementById('view-student-dashboard')) document.getElementById('view-student-dashboard').style.display = 'none';
-  if (document.getElementById('view-society-portal')) document.getElementById('view-society-portal').style.display = 'none';
+  if (document.getElementById('view-host-dashboard')) document.getElementById('view-host-dashboard').style.display = 'none';
   if (document.getElementById('view-auth-page')) document.getElementById('view-auth-page').style.display = 'none';
   if (document.getElementById('view-event-details')) document.getElementById('view-event-details').style.display = 'none';
 
-  // Remove navigation highlights
   const studentBtn = document.getElementById('btn-nav-student');
   const hostBtn = document.getElementById('btn-nav-host');
   if (studentBtn) studentBtn.classList.remove('active');
   if (hostBtn) hostBtn.classList.remove('active');
 
-  // 2. Show ONLY the single targeted interface screen
-  const targetEl = document.getElementById('view-' + viewName);
+  let elementId = 'view-' + viewName;
+  const targetEl = document.getElementById(elementId);
   if (targetEl) {
       targetEl.style.display = 'block';
   }
 
-  // Light up navigation button highlights based on perspective
-  if (viewName === 'student-dashboard' && studentBtn) {
-    studentBtn.classList.add('active');
+  if (viewName === 'student-dashboard') {
+    if (studentBtn) studentBtn.classList.add('active');
     renderAllOpportunities();
   }
-  if (viewName === 'host-dashboard' && hostBtn) {
-    hostBtn.classList.add('active');
+  if (viewName === 'host-dashboard') {
+    if (hostBtn) hostBtn.classList.add('active');
+    window.switchHostTimeline('active'); 
   }
   
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// Open standalone custom detail view parameters (Unstop Interface layout)
 window.openEventDetails = function(eventId) {
-    const dataset = state.opportunities.length > 0 ? state.opportunities : [
-        { eventId: "evt_01", title: "Innerve Hackathon 2026", society: "ACM Student Chapter", category: "Technical", registrations: 432 },
-        { eventId: "evt_02", title: "Taarangana Street Showdown", society: "Hypnotics Society", category: "Cultural", registrations: 189 }
-    ];
-
-    const opp = dataset.find(o => (o.eventId === eventId || o.id === eventId));
+    const opp = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
     if (!opp) return;
 
     state.selectedEventId = eventId;
 
-    // Map data variables directly to layout targets
     if (document.getElementById('detail-title')) document.getElementById('detail-title').innerText = opp.title;
     if (document.getElementById('detail-society')) document.getElementById('detail-society').innerText = `Hosted by ${opp.society || 'Official Chapter'}`;
     if (document.getElementById('detail-category-badge')) document.getElementById('detail-category-badge').innerText = opp.category || 'General';
     if (document.getElementById('detail-reg-count')) document.getElementById('detail-reg-count').innerText = opp.registrations || 0;
+    if (document.getElementById('detail-duration-dates')) document.getElementById('detail-duration-dates').innerText = opp.durationText || opp.eventDate;
+    
+    const heroImg = document.getElementById('detail-hero-image');
+    if (heroImg) heroImg.src = opp.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+
+    const paymentNoticeBar = document.getElementById('detail-payment-notice-bar');
+    if (paymentNoticeBar) {
+      if (opp.isPaid) {
+        paymentNoticeBar.style.display = 'flex';
+        document.getElementById('detail-payment-amount').innerText = opp.amount || '0';
+        document.getElementById('detail-payment-upi').innerText = opp.upi || 'N/A';
+      } else {
+        paymentNoticeBar.style.display = 'none';
+      }
+    }
 
     const regBtn = document.getElementById('detail-register-btn');
     if (regBtn) {
@@ -159,7 +177,6 @@ window.openEventDetails = function(eventId) {
             regBtn.innerText = "Registered ✓";
             regBtn.style.background = "#10b981";
             regBtn.disabled = true;
-            regBtn.onclick = null;
         } else {
             regBtn.innerText = "Register Now";
             regBtn.style.background = "#4f46e5";
@@ -171,7 +188,6 @@ window.openEventDetails = function(eventId) {
     window.switchView('event-details');
 };
 
-// Process actual RSVP network pipeline out to AWS endpoints
 window.executeAwsRegistration = function(eventId) {
     if (!state.currentUser) {
         window.showToast("Please sign in to register for this event!", "error");
@@ -187,20 +203,12 @@ window.executeAwsRegistration = function(eventId) {
         regBtn.disabled = true;
     }
 
-    // 👇 UPDATED: Logs matching the exact keys your AWS Lambda expects
-    console.log("Sending RSVP Payload:", { 
-        eventId: eventId,
-        studentName: state.currentUser.name,
-        studentEmail: state.currentUser.email 
-    });
-
     fetch(`${API_BASE_URL}/rsvp`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': idToken
         },
-        // 👇 FIXED: Changed keys to match your backend validation rules perfectly
         body: JSON.stringify({
             eventId: eventId,
             studentName: state.currentUser.name,
@@ -216,19 +224,24 @@ window.executeAwsRegistration = function(eventId) {
     })
     .then(() => {
         window.showToast("Registration Confirmed! Slot secured.", "success");
-        state.rsvps.push(eventId);
-        renderRsvps();
-        
-        if (regBtn) {
-            regBtn.innerText = "Registered ✓";
-            regBtn.style.background = "#10b981";
-            regBtn.disabled = true;
-            regBtn.onclick = null;
+        if (!state.rsvps.includes(eventId)) {
+            state.rsvps.push(eventId);
         }
+        
+        // Dynamic Incrementor Linker
+        const targetEvent = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
+        if (targetEvent) {
+            targetEvent.registrations = (Number(targetEvent.registrations) || 0) + 1;
+            const regCountEl = document.getElementById('detail-reg-count');
+            if (regCountEl) regCountEl.innerText = targetEvent.registrations;
+        }
+
+        renderRsvps();
+        renderAllOpportunities(); 
     })
     .catch(err => {
-        console.error("🔴 AWS Sync Detailed Failure:", err.message);
-        window.showToast("Could not complete registration. Try again.", "error");
+        console.error("🔴 AWS Sync Failure:", err.message);
+        window.showToast("Registration failed. Please try again.", "error");
         if (regBtn) {
             regBtn.innerText = "Register Now";
             regBtn.disabled = false;
@@ -236,7 +249,6 @@ window.executeAwsRegistration = function(eventId) {
     });
 };
 
-// Dynamic Authentication Screen Tab Control Engine
 window.toggleAuthForm = function(formType) {
   state.currentAuthMode = formType;
   
@@ -244,7 +256,6 @@ window.toggleAuthForm = function(formType) {
   const tabRegister = document.getElementById('auth-tab-register');
   const registerFields = document.getElementById('register-fields-group');
   const submitBtn = document.getElementById('auth-submit-btn');
-  
   const nameInput = document.getElementById('auth-stud-name');
   const yearInput = document.getElementById('auth-stud-year');
 
@@ -253,7 +264,6 @@ window.toggleAuthForm = function(formType) {
     if (tabRegister) tabRegister.classList.add('active');
     if (registerFields) registerFields.style.display = 'block';
     if (submitBtn) submitBtn.innerText = "Create Account";
-    
     if (nameInput) nameInput.required = true;
     if (yearInput) yearInput.required = true;
   } else {
@@ -261,16 +271,13 @@ window.toggleAuthForm = function(formType) {
     if (tabLogin) tabLogin.classList.add('active');
     if (registerFields) registerFields.style.display = 'none';
     if (submitBtn) submitBtn.innerText = "Sign In";
-    
     if (nameInput) nameInput.required = false;
     if (yearInput) yearInput.required = false;
   }
 };
 
-// Unified Submission Interceptor
 window.handleAuthWorkflowSubmit = function(e) {
     e.preventDefault();
-    
     const email = document.getElementById('auth-core-email').value.trim();
     const password = document.getElementById('auth-core-password').value;
 
@@ -279,7 +286,7 @@ window.handleAuthWorkflowSubmit = function(e) {
         const branch = document.getElementById('auth-stud-branch').value;
         const year = document.getElementById('auth-stud-year').value;
 
-        window.showToast("Registering with AWS Cloud Identity Directory...", "success");
+        window.showToast("Registering with AWS Cloud Identity...", "success");
 
         const attributeList = [
             new CognitoUserAttribute({ Name: 'name', Value: name }),
@@ -293,18 +300,17 @@ window.handleAuthWorkflowSubmit = function(e) {
         userPool.signUp(email, password, attributeList, null, (err, result) => {
             if (err) {
                 window.showToast(err.message || "Registration failed.", "error");
-                console.error(err);
                 return;
             }
-            window.showToast("Account created! Checking mailbox for code...", "success");
+            window.showToast("Account created! Check mailbox...", "success");
             
             setTimeout(() => {
-                const code = prompt(`Please input the validation token dispatched to ${email}:`);
+                const code = prompt(`Please input validation token dispatched to ${email}:`);
                 if (code) {
                     const cognitoUser = new CognitoUser({ Username: email, Pool: userPool });
                     cognitoUser.confirmRegistration(code, true, (confirmErr) => {
                         if (confirmErr) {
-                            window.showToast(confirmErr.message || "Invalid validation code.", "error");
+                            window.showToast(confirmErr.message || "Invalid token.", "error");
                             return;
                         }
                         window.showToast("Identity verified! Please sign in.", "success");
@@ -313,10 +319,8 @@ window.handleAuthWorkflowSubmit = function(e) {
                 }
             }, 600);
         });
-
     } else {
-        window.showToast("Verifying credentials database...", "success");
-        
+        window.showToast("Verifying credentials...", "success");
         const authDetails = new AuthenticationDetails({ Username: email, Password: password });
         const cognitoUser = new CognitoUser({ Username: email, Pool: userPool });
 
@@ -324,42 +328,34 @@ window.handleAuthWorkflowSubmit = function(e) {
             onSuccess: (result) => {
                 localStorage.setItem('evntr_id_token', result.getIdToken().getJwtToken());
                 localStorage.setItem('evntr_access_token', result.getAccessToken().getJwtToken());
-                
                 window.showToast("Welcome back! Access granted.", "success");
                 
                 cognitoUser.getUserAttributes((err, attributes) => {
                     if (err) {
-                        console.error("Attributes fetch fallback error:", err);
                         state.currentUser = { name: "Gauri Kumari", email: email };
                     } else {
                         const userProfile = {};
-                        attributes.forEach(attr => {
-                            userProfile[attr.Name] = attr.Value;
-                        });
-                        
+                        attributes.forEach(attr => { userProfile[attr.Name] = attr.Value; });
                         state.currentUser = {
                             name: userProfile['name'] || "Gauri Kumari",
-                            email: userProfile['email'] || cognitoUser.getUsername(), // FIXED: Pulls true email string instead of UUID string
+                            email: userProfile['email'] || cognitoUser.getUsername(),
                             role: userProfile['custom:role'] || 'Student',
                             branch: userProfile['custom:branch'] || 'CSE',
                             year: userProfile['custom:year'] || '2026'
                         };
                     }
-                    
                     updateNavProfile();
                     fetchUserRSVPs();
                     window.switchView('student-dashboard');
                 });
             },
             onFailure: (err) => {
-                window.showToast(err.message || "Login authentication failed.", "error");
-                console.error(err);
+                window.showToast(err.message || "Authentication failed.", "error");
             }
         });
     }
 };
 
-// Toast notifications helper engine
 window.showToast = function(message, type = 'success') {
   const root = document.getElementById('toast-root');
   if (!root) return;
@@ -370,12 +366,9 @@ window.showToast = function(message, type = 'success') {
   setTimeout(() => { toast.remove(); }, 3500);
 };
 
-// Global Session Termination Handler
 window.handleSignOut = function() {
   const cognitoUser = userPool.getCurrentUser();
-  if (cognitoUser) {
-      cognitoUser.signOut();
-  }
+  if (cognitoUser) cognitoUser.signOut();
   handleSignOutLocal();
 };
 
@@ -390,14 +383,12 @@ function handleSignOutLocal() {
     window.switchView('student-dashboard');
 }
 
-// Injects profile layout badges
 function updateNavProfile() {
   const container = document.getElementById('nav-auth-section');
   if (!container) return;
 
   if (state.currentUser) {
     const initials = state.currentUser.name ? state.currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : "GK";
-    
     container.innerHTML = `
       <div style="display:flex; align-items:center; gap: 1rem;">
         <div class="user-avatar" style="width:32px; height:32px; background:#4f46e5; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">${initials}</div>
@@ -409,32 +400,31 @@ function updateNavProfile() {
   }
 }
 
-// Template builder for the event dashboard cards with accurate tracking event loops
 function renderAllOpportunities() {
   const allGrid = document.getElementById('opportunities-root');
   if (!allGrid) return;
   
   let allHtml = '';
-  const dataset = state.opportunities.length > 0 ? state.opportunities : [
-    { eventId: "evt_01", title: "Innerve Hackathon 2026", society: "ACM Student Chapter", category: "Technical", eventDate: "Oct 14th - Oct 16th, 2026", registrations: 432 },
-    { eventId: "evt_02", title: "Taarangana Street Showdown", society: "Hypnotics Society", category: "Cultural", eventDate: "Nov 02, 2026", registrations: 189 }
-  ];
+  const dataset = state.opportunities;
 
   dataset.forEach(opp => {
     const currentId = opp.eventId || opp.id; 
-    const isReg = state.rsvps.includes(currentId);
+    const cardImg = opp.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+    const displayDate = opp.durationText || `Starts: ${opp.eventDate || '2026'}`;
+    
     allHtml += `
-      <div class="card">
-        <div class="card-banner">
-          <span class="category-badge">${opp.category || 'Event'}</span>
+      <div class="card" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+        <div class="card-banner" style="height: 160px; width: 100%; background: #cbd5e1; position: relative;">
+          <img src="${cardImg}" style="width:100%; height:100%; object-fit:cover;" alt="Banner">
+          <span class="category-badge" style="position: absolute; top: 0.5rem; left: 0.5rem; background: #4f46e5; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight:700;">${opp.category || 'Event'}</span>
         </div>
-        <div class="card-body">
-          <span class="card-society">${opp.society || 'Official'}</span>
-          <h3 class="card-title">${opp.title}</h3>
-          <p style="font-size:0.8rem; margin:0.5rem 0;">Date: ${opp.eventDate || '2026'}</p>
-          <div class="card-footer">
-            <span class="registrations-count">${opp.registrations || 0} Registered</span>
-            <button class="btn-card-action" onclick="window.openEventDetails('${currentId}')">View details</button>
+        <div class="card-body" style="padding: 1rem; flex-grow: 1; display: flex; flex-direction: column;">
+          <span class="card-society" style="font-size: 0.75rem; color: #64748b; font-weight:600;">${opp.society || 'Official'}</span>
+          <h3 class="card-title" style="font-size: 1.1rem; font-weight: 700; margin: 0.25rem 0; color: #0f172a;">${opp.title}</h3>
+          <p style="font-size:0.8rem; color: #475569; margin:0.5rem 0 1rem 0;">📅 ${displayDate}</p>
+          <div class="card-footer" style="margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; border-top: 1px solid #f1f5f9;">
+            <span class="registrations-count" style="font-size: 0.8rem; color: #64748b; font-weight:500;">${opp.registrations || 0} Applied</span>
+            <button class="btn-card-action" onclick="window.openEventDetails('${currentId}')" style="background:#4f46e5; color:white; border:none; padding:0.4rem 0.8rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">View details</button>
           </div>
         </div>
       </div>
@@ -443,7 +433,6 @@ function renderAllOpportunities() {
   allGrid.innerHTML = allHtml;
 }
 
-// Render active items directly to left panel drawers
 function renderRsvps() {
   const root = document.getElementById('rsvp-list-root');
   const badge = document.getElementById('rsvp-count-badge');
@@ -464,3 +453,137 @@ function renderRsvps() {
   });
   root.innerHTML = html;
 }
+
+window.toggleCreateEventForm = function() {
+    const formPanel = document.getElementById('launch-event-panel');
+    if (!formPanel) return;
+    formPanel.style.display = (formPanel.style.display === 'none' || formPanel.style.display === '') ? 'block' : 'none';
+};
+
+// ─── STRICT DATE TIMELINE CALCULATOR (FIXED PARSER) ───
+window.getEventTimelineStatus = function(eventDateString) {
+  if (!eventDateString) return 'active'; 
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let eventDate = new Date(eventDateString);
+
+  if (isNaN(eventDate.getTime())) {
+    return 'active'; 
+  }
+  
+  eventDate.setHours(0, 0, 0, 0);
+
+  if (eventDate.getTime() === today.getTime()) {
+    return 'active';   
+  } else if (eventDate.getTime() > today.getTime()) {
+    return 'future';   
+  } else {
+    return 'past';     
+  }
+};
+
+// ─── FIXED SOCIETY TIMELINE COMPONENT ───
+window.switchHostTimeline = function(targetTimeline) {
+    const tabButtons = document.querySelectorAll('.host-tab-nav-btn');
+    tabButtons.forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.color = '#64748b';
+        btn.style.fontWeight = '500';
+        btn.style.borderBottom = '2px solid transparent';
+    });
+
+    const activeBtn = document.getElementById(`tab-btn-${targetTimeline}`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.color = '#4f46e5';
+        activeBtn.style.fontWeight = '700';
+        activeBtn.style.borderBottom = '2px solid #4f46e5';
+    }
+
+    const gridRoot = document.getElementById('society-opportunities-root');
+    if (!gridRoot) return;
+
+    // Is global live array data ko prioritize kiya jayega bina overwrite kiye
+    const dataset = state.opportunities;
+
+    const filtered = dataset.filter(opp => {
+        const targetDate = opp.eventDate || opp.date;
+        const computedTimeline = window.getEventTimelineStatus(targetDate);
+        return computedTimeline === targetTimeline;
+    });
+
+    if (filtered.length === 0) {
+        gridRoot.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #64748b; padding: 4rem 2rem;">No Event Found</div>`;
+        return;
+    }
+
+    let cardsHtml = '';
+    filtered.forEach(opp => {
+        const currentId = opp.eventId || opp.id;
+        cardsHtml += `
+          <div class="card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:1.25rem; display:flex; flex-direction:column; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <span style="font-size:0.75rem; font-weight:700; color:#1e40af; background:#dbeafe; padding:0.25rem 0.5rem; border-radius:4px; width:fit-content; text-transform:uppercase;">${opp.category || 'Event'}</span>
+            <h4 style="font-size:1.1rem; font-weight:700; margin-top:0.5rem; color:#0f172a;">${opp.title}</h4>
+            <span style="font-size:0.8rem; color:#64748b; margin-bottom:0.5rem;">${opp.society || 'Official Chapter'}</span>
+            <span style="font-size:0.75rem; color:#94a3b8; margin-bottom:1rem;">Date: ${opp.eventDate || '2026'}</span>
+            <div style="margin-top:auto; padding-top:0.75rem; border-top:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:0.8rem; color:#4f46e5; font-weight:700;">${opp.registrations || 0} Applied</span>
+              <button onclick="window.handleDeleteEvent && window.handleDeleteEvent('${currentId}')" style="background:#ef4444; color:white; border:none; padding:0.35rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">Delete</button>
+            </div>
+          </div>
+        `;
+    });
+
+    gridRoot.innerHTML = cardsHtml;
+};
+
+window.handleCreateEventSubmit = function(e) {
+  e.preventDefault();
+
+  const title = document.getElementById('form-event-title').value.trim();
+  const society = document.getElementById('form-event-society').value.trim();
+  const category = document.getElementById('form-event-category').value;
+  let imageUrl = document.getElementById('form-event-image').value.trim();
+  const startDate = document.getElementById('form-event-start-date').value;
+  const endDate = document.getElementById('form-event-end-date').value;
+  
+  const requiresPayment = document.getElementById('form-event-requires-payment').checked;
+  const paymentAmount = requiresPayment ? document.getElementById('form-event-amount').value : null;
+  const paymentUpi = requiresPayment ? document.getElementById('form-event-upi').value : null;
+
+  if (!imageUrl) {
+    imageUrl = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'; 
+  }
+
+  const formattedDuration = `${startDate} to ${endDate}`;
+  const customId = "evt_" + Date.now();
+
+  const newEventObj = {
+    eventId: customId,
+    id: customId,
+    title: title,
+    society: society,
+    category: category,
+    eventDate: startDate, 
+    endDate: endDate,
+    durationText: formattedDuration,
+    imageUrl: imageUrl,
+    registrations: 0,
+    isPaid: requiresPayment,
+    amount: paymentAmount,
+    upi: paymentUpi
+  };
+
+  state.opportunities.unshift(newEventObj); 
+
+  window.showToast("Event successfully published across platform!", "success");
+  document.getElementById('create-event-form').reset();
+  document.getElementById('payment-details-wrap').style.display = 'none';
+  window.toggleCreateEventForm(); 
+
+  renderAllOpportunities();
+  window.switchHostTimeline('active');
+  window.switchView('student-dashboard'); 
+};
