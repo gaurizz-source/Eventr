@@ -101,7 +101,7 @@ function fetchUserRSVPs() {
     if (!idToken || !state.currentUser) return;
 
     fetch(`${API_BASE_URL}/rsvp?email=${encodeURIComponent(state.currentUser.email)}`, {
-        headers: { "Authorization": idToken }
+        headers: {  }
     })
     .then(res => res.json())
     .then(data => {
@@ -207,7 +207,7 @@ window.executeAwsRegistration = function(eventId) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': idToken
+            // 'Authorization': idToken
         },
         body: JSON.stringify({
             eventId: eventId,
@@ -573,10 +573,37 @@ window.handleCreateEventSubmit = function(e) {
     registrations: 0,
     isPaid: requiresPayment,
     amount: paymentAmount,
-    upi: paymentUpi
+    upi: paymentUpi,
+
+    hostEmail: state.currentUser && state.currentUser.email ? state.currentUser.email : null
   };
 
   state.opportunities.unshift(newEventObj); 
+
+  // handleCreateEventSubmit ke andar unshift wale line ke paas ye API call lagayein:
+const idToken = localStorage.getItem('evntr_id_token');
+
+fetch(`${API_BASE_URL}/events`, { // Aapka event create karne ka endpoint
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        // 'Authorization': idToken
+    },
+    body: JSON.stringify(newEventObj)
+})
+.then(res => {
+    if(!res.ok) throw new Error("Failed to save event on AWS");
+    return res.json();
+})
+.then(savedEvent => {
+    window.showToast("Event permanently saved to AWS Cloud!", "success");
+    // Dubara live data fetch karle taaki sync ho jaye
+    fetchLiveOpportunities(); 
+})
+.catch(err => {
+    console.error("Cloud saving failed:", err);
+    window.showToast("Saved locally, but failed to sync with cloud.", "error");
+});
 
   window.showToast("Event successfully published across platform!", "success");
   document.getElementById('create-event-form').reset();
