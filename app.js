@@ -28,6 +28,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     checkPersistentSession();
     fetchLiveOpportunities();
+
+    document.getElementById('dashboard-search')?.addEventListener('input', applyDashboardFilters);
+    document.getElementById('filter-date')?.addEventListener('change', applyDashboardFilters);
+    document.getElementById('filter-type')?.addEventListener('change', applyDashboardFilters);
 });
 
 function checkPersistentSession() {
@@ -234,6 +238,12 @@ window.executeAwsRegistration = function(eventId) {
             targetEvent.registrations = (Number(targetEvent.registrations) || 0) + 1;
             const regCountEl = document.getElementById('detail-reg-count');
             if (regCountEl) regCountEl.innerText = targetEvent.registrations;
+        }
+
+         if (regBtn) {
+            regBtn.innerText = "Registered ✓";
+            regBtn.style.background = "#10b981";
+            regBtn.disabled = true;
         }
 
         renderRsvps();
@@ -614,3 +624,82 @@ fetch(`${API_BASE_URL}/events`, { // Aapka event create karne ka endpoint
   window.switchHostTimeline('active');
   window.switchView('student-dashboard'); 
 };
+
+function applyDashboardFilters() {
+    const grid = document.getElementById('opportunities-root');
+    if (!grid) return;
+
+    const searchTerm = (document.getElementById('dashboard-search')?.value || '').toLowerCase().trim();
+    const dateFilter = document.getElementById('filter-date')?.value || '';
+    const typeFilter = document.getElementById('filter-type')?.value || '';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const filtered = state.opportunities.filter(opp => {
+        // Search: match title or society
+        if (searchTerm) {
+            const haystack = `${opp.title} ${opp.society}`.toLowerCase();
+            if (!haystack.includes(searchTerm)) return false;
+        }
+
+        // Category/type filter
+        if (typeFilter) {
+            const oppCategory = (opp.category || '').toLowerCase();
+            if (oppCategory !== typeFilter.toLowerCase()) return false;
+        }
+
+        // Date filter
+        if (dateFilter) {
+            const eventDate = new Date(opp.eventDate);
+            if (isNaN(eventDate.getTime())) return false;
+            eventDate.setHours(0, 0, 0, 0);
+
+            const diffDays = Math.round((eventDate - today) / (1000 * 60 * 60 * 24));
+
+            if (dateFilter === 'this-week' && (diffDays < 0 || diffDays > 7)) return false;
+            if (dateFilter === 'this-month' && (diffDays < 0 || diffDays > 30)) return false;
+        }
+
+        return true;
+    });
+
+    renderFilteredOpportunities(filtered);
+}
+
+// Same rendering logic as renderAllOpportunities, but takes a dataset param
+function renderFilteredOpportunities(dataset) {
+    const allGrid = document.getElementById('opportunities-root');
+    if (!allGrid) return;
+
+    if (dataset.length === 0) {
+        allGrid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color:#64748b; padding:3rem;">No events match your filters.</div>`;
+        return;
+    }
+
+    let allHtml = '';
+    dataset.forEach(opp => {
+        const currentId = opp.eventId || opp.id;
+        const cardImg = opp.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+        const displayDate = opp.durationText || `Starts: ${opp.eventDate || '2026'}`;
+
+        allHtml += `
+          <div class="card" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+            <div class="card-banner" style="height: 160px; width: 100%; background: #cbd5e1; position: relative;">
+              <img src="${cardImg}" style="width:100%; height:100%; object-fit:cover;" alt="Banner">
+              <span class="category-badge" style="position: absolute; top: 0.5rem; left: 0.5rem; background: #4f46e5; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight:700;">${opp.category || 'Event'}</span>
+            </div>
+            <div class="card-body" style="padding: 1rem; flex-grow: 1; display: flex; flex-direction: column;">
+              <span class="card-society" style="font-size: 0.75rem; color: #64748b; font-weight:600;">${opp.society || 'Official'}</span>
+              <h3 class="card-title" style="font-size: 1.1rem; font-weight: 700; margin: 0.25rem 0; color: #0f172a;">${opp.title}</h3>
+              <p style="font-size:0.8rem; color: #475569; margin:0.5rem 0 1rem 0;">📅 ${displayDate}</p>
+              <div class="card-footer" style="margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; border-top: 1px solid #f1f5f9;">
+                <span class="registrations-count" style="font-size: 0.8rem; color: #64748b; font-weight:500;">${opp.registrations || 0} Applied</span>
+                <button class="btn-card-action" onclick="window.openEventDetails('${currentId}')" style="background:#4f46e5; color:white; border:none; padding:0.4rem 0.8rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">View details</button>
+              </div>
+            </div>
+          </div>
+        `;
+    });
+    allGrid.innerHTML = allHtml;
+}
