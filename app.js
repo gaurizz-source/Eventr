@@ -17,7 +17,9 @@ const state = {
   currentAuthMode: 'login', 
   rsvps: [], 
   opportunities: [],
-  selectedEventId: null 
+  selectedEventId: null ,
+  accessibleOwners: [],
+  isSocietyOwner: false
 };
 
 // --- INITIALIZATION RUNTIME ---
@@ -28,8 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     checkPersistentSession();
     fetchLiveOpportunities();
-
-    document.getElementById('dashboard-search')?.addEventListener('input', applyDashboardFilters);
+   document.getElementById('dashboard-search')?.addEventListener('input', applyDashboardFilters);
     document.getElementById('filter-date')?.addEventListener('change', applyDashboardFilters);
     document.getElementById('filter-type')?.addEventListener('change', applyDashboardFilters);
 });
@@ -61,8 +62,11 @@ function checkPersistentSession() {
                 localStorage.setItem('evntr_id_token', session.getIdToken().getJwtToken());
                 localStorage.setItem('evntr_access_token', session.getAccessToken().getJwtToken());
                 
-                updateNavProfile();
-                fetchUserRSVPs();
+              updateNavProfile();
+                fetchSocietyAccess().then(() => {
+                    updateHostPermissions();
+                    fetchUserRSVPs();
+                });
             });
         });
     } else {
@@ -199,7 +203,6 @@ window.executeAwsRegistration = function(eventId) {
         return;
     }
 
-    const idToken = localStorage.getItem('evntr_id_token');
     const regBtn = document.getElementById('detail-register-btn');
     
     if (regBtn) {
@@ -209,10 +212,7 @@ window.executeAwsRegistration = function(eventId) {
 
     fetch(`${API_BASE_URL}/rsvp`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            // 'Authorization': idToken
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             eventId: eventId,
             studentName: state.currentUser.name,
@@ -232,7 +232,6 @@ window.executeAwsRegistration = function(eventId) {
             state.rsvps.push(eventId);
         }
         
-        // Dynamic Incrementor Linker
         const targetEvent = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
         if (targetEvent) {
             targetEvent.registrations = (Number(targetEvent.registrations) || 0) + 1;
@@ -240,7 +239,7 @@ window.executeAwsRegistration = function(eventId) {
             if (regCountEl) regCountEl.innerText = targetEvent.registrations;
         }
 
-         if (regBtn) {
+        if (regBtn) {
             regBtn.innerText = "Registered ✓";
             regBtn.style.background = "#10b981";
             regBtn.disabled = true;
@@ -355,8 +354,11 @@ window.handleAuthWorkflowSubmit = function(e) {
                         };
                     }
                     updateNavProfile();
-                    fetchUserRSVPs();
-                    window.switchView('student-dashboard');
+                    fetchSocietyAccess().then(() => {
+                        updateHostPermissions();
+                        fetchUserRSVPs();
+                        window.switchView('student-dashboard');
+                    });
                 });
             },
             onFailure: (err) => {
@@ -515,8 +517,10 @@ window.switchHostTimeline = function(targetTimeline) {
     const gridRoot = document.getElementById('society-opportunities-root');
     if (!gridRoot) return;
 
-    // Is global live array data ko prioritize kiya jayega bina overwrite kiye
-    const dataset = state.opportunities;
+   // Only show events the current user owns or has been added to as a member
+    const dataset = state.opportunities.filter(opp => 
+        state.accessibleOwners.includes((opp.hostEmail || '').toLowerCase())
+    );
 
     const filtered = dataset.filter(opp => {
         const targetDate = opp.eventDate || opp.date;
@@ -540,7 +544,10 @@ window.switchHostTimeline = function(targetTimeline) {
             <span style="font-size:0.75rem; color:#94a3b8; margin-bottom:1rem;">Date: ${opp.eventDate || '2026'}</span>
             <div style="margin-top:auto; padding-top:0.75rem; border-top:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center;">
               <span style="font-size:0.8rem; color:#4f46e5; font-weight:700;">${opp.registrations || 0} Applied</span>
-              <button onclick="window.handleDeleteEvent && window.handleDeleteEvent('${currentId}')" style="background:#ef4444; color:white; border:none; padding:0.35rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">Delete</button>
+              ${opp.hostEmail && opp.hostEmail.toLowerCase() === (state.currentUser?.email || '').toLowerCase()
+                ? `<button onclick="window.handleDeleteEvent && window.handleDeleteEvent('${currentId}')" style="background:#ef4444; color:white; border:none; padding:0.35rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">Delete</button>`
+                : `<span style="font-size:0.75rem; color:#94a3b8; font-style:italic;">View only</span>`
+              }
             </div>
           </div>
         `;
@@ -625,6 +632,9 @@ fetch(`${API_BASE_URL}/events`, { // Aapka event create karne ka endpoint
   window.switchView('student-dashboard'); 
 };
 
+
+
+
 function applyDashboardFilters() {
     const grid = document.getElementById('opportunities-root');
     if (!grid) return;
@@ -637,28 +647,28 @@ function applyDashboardFilters() {
     today.setHours(0, 0, 0, 0);
 
     const filtered = state.opportunities.filter(opp => {
-        // Search: match title or society
         if (searchTerm) {
             const haystack = `${opp.title} ${opp.society}`.toLowerCase();
             if (!haystack.includes(searchTerm)) return false;
         }
 
-        // Category/type filter
         if (typeFilter) {
             const oppCategory = (opp.category || '').toLowerCase();
             if (oppCategory !== typeFilter.toLowerCase()) return false;
         }
 
-        // Date filter
         if (dateFilter) {
             const eventDate = new Date(opp.eventDate);
             if (isNaN(eventDate.getTime())) return false;
             eventDate.setHours(0, 0, 0, 0);
-
             const diffDays = Math.round((eventDate - today) / (1000 * 60 * 60 * 24));
 
             if (dateFilter === 'this-week' && (diffDays < 0 || diffDays > 7)) return false;
-            if (dateFilter === 'this-month' && (diffDays < 0 || diffDays > 30)) return false;
+            if (dateFilter === 'this-month') {
+                const isSameMonth = eventDate.getFullYear() === today.getFullYear() &&
+                                     eventDate.getMonth() === today.getMonth();
+                if (!isSameMonth || diffDays < 0) return false;
+            }
         }
 
         return true;
@@ -667,7 +677,6 @@ function applyDashboardFilters() {
     renderFilteredOpportunities(filtered);
 }
 
-// Same rendering logic as renderAllOpportunities, but takes a dataset param
 function renderFilteredOpportunities(dataset) {
     const allGrid = document.getElementById('opportunities-root');
     if (!allGrid) return;
@@ -703,3 +712,45 @@ function renderFilteredOpportunities(dataset) {
     });
     allGrid.innerHTML = allHtml;
 }
+function fetchSocietyAccess() {
+    if (!state.currentUser) return Promise.resolve();
+    return fetch(`${API_BASE_URL}/society/access?email=${encodeURIComponent(state.currentUser.email)}`)
+        .then(res => res.json())
+        .then(data => {
+            state.accessibleOwners = data.accessibleOwners || [state.currentUser.email];
+            state.isSocietyOwner = state.accessibleOwners.length === 1 &&
+                                    state.accessibleOwners[0] === state.currentUser.email;
+        })
+        .catch(err => {
+            console.error("Failed to fetch society access:", err);
+            state.accessibleOwners = [state.currentUser.email];
+            state.isSocietyOwner = true;
+        });
+}
+
+function updateHostPermissions() {
+    const launchBtn = document.querySelector('button[onclick="window.toggleCreateEventForm()"]');
+    if (launchBtn) launchBtn.style.display = state.isSocietyOwner ? 'inline-block' : 'none';
+
+    const membersPanel = document.getElementById('society-members-panel');
+    if (membersPanel) membersPanel.style.display = state.isSocietyOwner ? 'block' : 'none';
+}
+
+window.handleAddMember = function(e) {
+    e.preventDefault();
+    const memberEmail = document.getElementById('new-member-email').value.trim();
+    fetch(`${API_BASE_URL}/society/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerEmail: state.currentUser.email, memberEmail })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Failed to add member");
+        return res.json();
+    })
+    .then(() => {
+        window.showToast(`${memberEmail} added as a member!`, "success");
+        document.getElementById('new-member-email').value = '';
+    })
+    .catch(() => window.showToast("Failed to add member.", "error"));
+};

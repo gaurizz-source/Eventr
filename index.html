@@ -73,7 +73,7 @@
             <option value="this-month">This Month</option>
           </select>
           
-          <select id="filter-type" class="filter-dropdown">
+        <select id="filter-type" class="filter-dropdown">
             <option value="">Type (All)</option>
             <option value="hackathon">Hackathon</option>
             <option value="workshop">Workshop</option>
@@ -83,7 +83,8 @@
             <option value="quiz">Quiz</option>
             <option value="cultural">Cultural</option>
             <option value="fest">College Fest</option>
-             <option value="fest">Technical</option>
+            <option value="technical">Technical</option>
+            <option value="sports">Sports</option>
           </select>
         </div>
       </div>
@@ -125,6 +126,14 @@
         </button>
       </div>
 
+      <div id="society-members-panel" style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:1.25rem; margin-bottom:1.5rem; display:none;">
+        <h4 style="margin:0 0 0.75rem 0; font-size:1rem; color:#0f172a;">Add Society Member (view-only access)</h4>
+        <form onsubmit="window.handleAddMember(event)" style="display:flex; gap:0.75rem;">
+          <input type="email" id="new-member-email" placeholder="member@igdtuw.ac.in" required style="flex:1; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px;">
+          <button type="submit" style="background:#4f46e5; color:white; border:none; padding:0.6rem 1.25rem; border-radius:6px; cursor:pointer; font-weight:600;">Add</button>
+        </form>
+      </div>
+
       <!-- VIEW: UPGRADED LAUNCH EVENT PANEL -->
 <div id="launch-event-panel" style="display: none; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
   <h3 style="margin-bottom: 1.5rem; color: #0f172a; font-size: 1.25rem; font-weight: 700;">Launch New Campus Event</h3>
@@ -145,18 +154,16 @@
       <div>
         <label style="font-size: 0.85rem; font-weight: 600; color: #475569;">Category</label>
         <select id="form-event-category" style="width: 100%; padding: 0.65rem; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 0.25rem;">
-  <option value="hackathon">Hackathon</option>
-  <option value="workshop">Workshop</option>
-  <option value="seminar">Seminar</option>
-  <option value="webinar">Webinar</option>
-  <option value="coding">Coding Contest</option>
-  <option value="quiz">Quiz</option>
-  <option value="cultural">Cultural</option>
-  <option value="fest">College Fest</option>
-  <option value="technical">Technical</option>
-  <option value="sports">Sports</option>
-
-
+          <option value="hackathon">Hackathon</option>
+          <option value="workshop">Workshop</option>
+          <option value="seminar">Seminar</option>
+          <option value="webinar">Webinar</option>
+          <option value="coding">Coding Contest</option>
+          <option value="quiz">Quiz</option>
+          <option value="cultural">Cultural</option>
+          <option value="fest">College Fest</option>
+          <option value="technical">Technical</option>
+          <option value="sports">Sports</option>
         </select>
       </div>
       <div>
