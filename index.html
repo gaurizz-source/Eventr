@@ -352,6 +352,30 @@
     </div>
   </div>
 
+  <!-- QR Check-in Code Modal (Student side) -->
+<div id="qr-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:12px; padding:1.5rem; max-width:320px; width:90%; text-align:center;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <h3 id="qr-modal-event-title" style="margin:0; font-size:1rem; color:#0f172a;">Event Check-in</h3>
+      <button onclick="window.closeQrModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:#64748b;">&times;</button>
+    </div>
+    <p style="font-size:0.8rem; color:#64748b; margin-bottom:1rem;">Show this code at the entrance to check in.</p>
+    <div id="qr-code-container" style="display:flex; justify-content:center;"></div>
+  </div>
+</div>
+
+<!-- QR Scanner Modal (Host side) -->
+<div id="scanner-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:12px; padding:1.5rem; max-width:420px; width:90%;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <h3 style="margin:0; font-size:1.1rem; color:#0f172a;">Scan Check-in</h3>
+      <button onclick="window.closeScannerModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:#64748b;">&times;</button>
+    </div>
+    <div id="qr-reader" style="width:100%;"></div>
+    <div id="scanner-result-box" style="margin-top:1rem; text-align:center; font-size:0.9rem;"></div>
+  </div>
+</div>
+
   <!-- Add Member Modal -->
   <div id="add-member-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); z-index:1000; align-items:center; justify-content:center;">
     <div style="background:#fff; border-radius:12px; padding:1.5rem; max-width:400px; width:90%;">
@@ -372,6 +396,8 @@
       var global = window;
     }
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

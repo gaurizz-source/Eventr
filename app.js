@@ -113,13 +113,13 @@ function fetchUserRSVPs() {
     })
     .then(res => res.json())
     .then(data => {
-        state.rsvps = data
-            .filter(r => {
-                const event = state.opportunities.find(o => (o.eventId === r.eventId || o.id === r.eventId));
-                if (!event) return true; // event data not loaded yet, keep it rather than silently drop
-                return window.getEventTimelineStatus(event.eventDate) !== 'past';
-            })
-            .map(r => r.eventId);
+    const kept = data.filter(r => {
+        const event = state.opportunities.find(o => (o.eventId === r.eventId || o.id === r.eventId));
+        if (!event) return true;
+        return window.getEventTimelineStatus(event.eventDate) !== 'past';
+    });
+    state.rsvps = kept.map(r => r.eventId);
+    kept.forEach(r => { state.rsvpMeta[r.eventId] = r.rsvpId; });
         renderRsvps();
         renderAllOpportunities();
     })
@@ -245,12 +245,12 @@ window.executeAwsRegistration = function(eventId) {
         }
         return res.json();
     })
-    .then(() => {
+    .then((result) => {
         window.showToast("Registration Confirmed! Slot secured.", "success");
         if (!state.rsvps.includes(eventId)) {
             state.rsvps.push(eventId);
         }
-        
+        state.rsvpMeta[eventId] = result.rsvpId;
         const targetEvent = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
         if (targetEvent) {
             targetEvent.registrations = (Number(targetEvent.registrations) || 0) + 1;
@@ -589,6 +589,7 @@ let cardsHtml = '';
               </div>
               <div style="display:flex; gap:0.5rem;">
                 <button onclick="window.openStatusModal('${currentId}')" style="flex:1; background:#eef2ff; color:#4f46e5; border:none; padding:0.4rem 0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">View Status</button>
+                <button onclick="window.openScannerModal('${currentId}')" style="flex:1; background:#fef3c7; color:#b45309; border:none; padding:0.4rem 0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">📷 Scan Check-in</button>
                 ${isOwner && !isPastEvent
                   ? `<button onclick="window.openAddMemberModal()" style="flex:1; background:#f0fdf4; color:#059669; border:none; padding:0.4rem 0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">+ Add Member</button>`
                   : ``
@@ -832,16 +833,19 @@ window.openStatusModal = function(eventId) {
     fetch(`${API_BASE_URL}/rsvp/by-event?eventId=${encodeURIComponent(eventId)}`)
         .then(res => res.json())
         .then(data => {
-            countEl.innerText = data.length;
+            countEl.innerText = `${data.length} (${data.filter(r => r.checkedIn).length} checked in)`;
             if (data.length === 0) {
                 listEl.innerHTML = `<div style="text-align:center; color:#94a3b8; padding:1rem; font-size:0.85rem;">No registrations yet.</div>`;
                 return;
             }
             listEl.innerHTML = data.map(r => `
-                <div style="padding:0.6rem; background:#f8fafc; border-radius:6px; font-size:0.85rem;">
-                  <div style="font-weight:600; color:#0f172a;">${r.studentName}</div>
-                  <div style="color:#64748b; font-size:0.75rem;">${r.studentEmail}</div>
-                  ${r.paymentScreenshotUrl ? `<a href="${r.paymentScreenshotUrl}" target="_blank" style="color:#4f46e5; font-size:0.75rem;">View payment proof</a>` : ''}
+                <div style="padding:0.6rem; background:#f8fafc; border-radius:6px; font-size:0.85rem; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <div style="font-weight:600; color:#0f172a;">${r.studentName}</div>
+                    <div style="color:#64748b; font-size:0.75rem;">${r.studentEmail}</div>
+                    ${r.paymentScreenshotUrl ? `<a href="${r.paymentScreenshotUrl}" target="_blank" style="color:#4f46e5; font-size:0.75rem;">View payment proof</a>` : ''}
+                  </div>
+                  <span style="font-size:0.7rem; font-weight:700; padding:0.2rem 0.5rem; border-radius:4px; ${r.checkedIn ? 'background:#dcfce7;color:#166534;' : 'background:#f1f5f9;color:#94a3b8;'}">${r.checkedIn ? '✓ Checked In' : 'Not yet'}</span>
                 </div>
             `).join('');
         })
