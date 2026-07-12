@@ -120,13 +120,18 @@ function fetchUserRSVPs() {
         return window.getEventTimelineStatus(event.eventDate) !== 'past';
     });
     state.rsvps = kept.map(r => r.eventId);
-    kept.forEach(r => { state.rsvpMeta[r.eventId] = r.rsvpId; });
+    kept.forEach(r => {
+        state.rsvpMeta[r.eventId] = {
+            rsvpId: r.rsvpId,
+            status: r.status || 'confirmed', // older RSVPs predate the waitlist field — treat as confirmed
+            waitlistPosition: r.waitlistPosition || null
+        };
+    });
         renderRsvps();
         renderAllOpportunities();
     })
     .catch(err => console.error("Error syncing RSVPs:", err));
 }
-
 // Global Router Engine
 window.switchView = function(viewName) {
   state.activeView = viewName;
@@ -192,7 +197,7 @@ window.openEventDetails = function(eventId) {
       }
     }
 
-  const capacityNoteEl = document.getElementById('detail-capacity-note');
+const capacityNoteEl = document.getElementById('detail-capacity-note');
     const isFull = opp.capacity && (Number(opp.registrations) || 0) >= Number(opp.capacity);
     if (capacityNoteEl) {
         capacityNoteEl.innerText = opp.capacity ? `/ ${opp.capacity} spots` : '';
@@ -200,15 +205,23 @@ window.openEventDetails = function(eventId) {
 
     const regBtn = document.getElementById('detail-register-btn');
     if (regBtn) {
-        const isReg = state.rsvps.includes(eventId);
-        if (isReg) {
+        const meta = state.rsvpMeta[eventId];
+        const isConfirmed = meta && meta.status === 'confirmed';
+        const isWaitlisted = meta && meta.status === 'waitlisted';
+
+        if (isConfirmed) {
             regBtn.innerText = "Registered ✓";
             regBtn.style.background = "#10b981";
             regBtn.disabled = true;
-        } else if (isFull) {
-            regBtn.innerText = "Event Full";
-            regBtn.style.background = "#94a3b8";
+        } else if (isWaitlisted) {
+            regBtn.innerText = meta.waitlistPosition ? `Waitlisted (#${meta.waitlistPosition})` : "Waitlisted";
+            regBtn.style.background = "#f59e0b";
             regBtn.disabled = true;
+        } else if (isFull) {
+            regBtn.innerText = "Join Waitlist";
+            regBtn.style.background = "#f59e0b";
+            regBtn.disabled = false;
+            regBtn.onclick = () => window.executeAwsRegistration(eventId);
         } else {
             regBtn.innerText = "Register Now";
             regBtn.style.background = "#4f46e5";
@@ -220,6 +233,7 @@ window.openEventDetails = function(eventId) {
     window.switchView('event-details');
 };
 
+
 window.executeAwsRegistration = function(eventId) {
     if (!state.currentUser) {
         window.showToast("Please sign in to register for this event!", "error");
@@ -228,7 +242,7 @@ window.executeAwsRegistration = function(eventId) {
     }
 
     const regBtn = document.getElementById('detail-register-btn');
-    
+
     if (regBtn) {
         regBtn.innerText = "Processing...";
         regBtn.disabled = true;
@@ -244,9 +258,6 @@ window.executeAwsRegistration = function(eventId) {
         })
     })
     .then(async res => {
-        if (res.status === 409) {
-            throw new Error("This event is full. Registration closed.");
-        }
         if (!res.ok) {
             const errorText = await res.text();
             throw new Error(`AWS Server Error (${res.status}): ${errorText}`);
@@ -254,47 +265,70 @@ window.executeAwsRegistration = function(eventId) {
         return res.json();
     })
     .then((result) => {
-        window.showToast("Registration Confirmed! Slot secured.", "success");
+        const isWaitlisted = result.status === 'waitlisted';
+
+        window.showToast(
+            isWaitlisted ? "Event is full — you've been added to the waitlist." : "Registration Confirmed! Slot secured.",
+            isWaitlisted ? "error" : "success"
+        );
+
         if (!state.rsvps.includes(eventId)) {
             state.rsvps.push(eventId);
         }
-        state.rsvpMeta[eventId] = result.rsvpId;
+        state.rsvpMeta[eventId] = {
+            rsvpId: result.rsvpId,
+            status: result.status,
+            waitlistPosition: null // position unknown until next fetchUserRSVPs sync
+        };
+
         const targetEvent = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
-        if (targetEvent) {
+        if (targetEvent && !isWaitlisted) {
             targetEvent.registrations = (Number(targetEvent.registrations) || 0) + 1;
             const regCountEl = document.getElementById('detail-reg-count');
             if (regCountEl) regCountEl.innerText = targetEvent.registrations;
         }
 
         if (regBtn) {
-            regBtn.innerText = "Registered ✓";
-            regBtn.style.background = "#10b981";
+            if (isWaitlisted) {
+                regBtn.innerText = "Waitlisted";
+                regBtn.style.background = "#f59e0b";
+            } else {
+                regBtn.innerText = "Registered ✓";
+                regBtn.style.background = "#10b981";
+            }
             regBtn.disabled = true;
         }
 
         renderRsvps();
-        renderAllOpportunities(); 
+        renderAllOpportunities();
+        fetchUserRSVPs(); // re-sync to pick up the real waitlist position from the backend
     })
  .catch(err => {
         console.error("🔴 AWS Sync Failure:", err.message);
-        window.showToast(err.message.includes("full") ? err.message : "Registration failed. Please try again.", "error");
+        window.showToast("Registration failed. Please try again.", "error");
         if (regBtn) {
-            regBtn.innerText = err.message.includes("full") ? "Event Full" : "Register Now";
-            regBtn.disabled = err.message.includes("full");
+            regBtn.innerText = "Register Now";
+            regBtn.disabled = false;
         }
     });
 };
 
 window.handleCancelRsvp = function(eventId) {
     const opp = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
-    const rsvpId = state.rsvpMeta[eventId];
+    const meta = state.rsvpMeta[eventId];
+    const rsvpId = meta && meta.rsvpId;
 
     if (!rsvpId) {
         window.showToast("Cannot cancel — registration reference missing. Try refreshing.", "error");
         return;
     }
 
-    const confirmed = confirm(`Cancel your registration for "${opp ? opp.title : 'this event'}"? This cannot be undone.`);
+    const isWaitlisted = meta.status === 'waitlisted';
+    const confirmText = isWaitlisted
+        ? `Leave the waitlist for "${opp ? opp.title : 'this event'}"?`
+        : `Cancel your registration for "${opp ? opp.title : 'this event'}"? This cannot be undone. If someone is on the waitlist, they'll automatically be given your spot.`;
+
+    const confirmed = confirm(confirmText);
     if (!confirmed) return;
 
     fetch(`${API_BASE_URL}/rsvp/cancel`, {
@@ -310,12 +344,12 @@ window.handleCancelRsvp = function(eventId) {
         return res.json();
     })
     .then(() => {
-        window.showToast("Registration cancelled.", "success");
+        window.showToast(isWaitlisted ? "Removed from waitlist." : "Registration cancelled.", "success");
 
         state.rsvps = state.rsvps.filter(id => id !== eventId);
         delete state.rsvpMeta[eventId];
 
-        if (opp) {
+        if (opp && !isWaitlisted) {
             opp.registrations = Math.max(0, (Number(opp.registrations) || 1) - 1);
         }
 
@@ -537,17 +571,22 @@ function renderRsvps() {
   let html = '';
   state.rsvps.forEach(oppId => {
     const opp = state.opportunities.find(o => (o.eventId === oppId || o.id === oppId));
+    const meta = state.rsvpMeta[oppId];
     if (opp) {
+      const isWaitlisted = meta && meta.status === 'waitlisted';
+      const statusTag = isWaitlisted
+        ? `<span style="background:#fef3c7; color:#b45309; font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px; white-space:nowrap;">Waitlisted${meta.waitlistPosition ? ' #' + meta.waitlistPosition : ''}</span>`
+        : `<button onclick="window.openQrModal('${oppId}')" style="background:#eef2ff; color:#4f46e5; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">QR Code</button>`;
+
       html += `<div style="padding:0.5rem 0; font-size:0.85rem; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
         <b style="flex:1;">${opp.title}</b>
-        <button onclick="window.openQrModal('${oppId}')" style="background:#eef2ff; color:#4f46e5; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">QR Code</button>
-        <button onclick="window.handleCancelRsvp('${oppId}')" style="background:#fef2f2; color:#dc2626; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">Cancel</button>
+        ${statusTag}
+        <button onclick="window.handleCancelRsvp('${oppId}')" style="background:#fef2f2; color:#dc2626; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">${isWaitlisted ? 'Leave' : 'Cancel'}</button>
       </div>`;
     }
   });
   root.innerHTML = html;
 }
-
 window.toggleCreateEventForm = function() {
     const formPanel = document.getElementById('launch-event-panel');
     if (!formPanel) return;
@@ -936,7 +975,8 @@ window.closeAddMemberModal = function() {
 
 // ─── QR CHECK-IN: STUDENT-SIDE QR DISPLAY ───
 window.openQrModal = function(eventId) {
-    const rsvpId = state.rsvpMeta[eventId];
+    const meta = state.rsvpMeta[eventId];
+    const rsvpId = meta && meta.rsvpId;
     const overlay = document.getElementById('qr-modal-overlay');
     const container = document.getElementById('qr-code-container');
     const label = document.getElementById('qr-modal-event-title');
@@ -948,6 +988,8 @@ window.openQrModal = function(eventId) {
     container.innerHTML = '';
     if (!rsvpId) {
         container.innerHTML = `<div style="color:#ef4444; font-size:0.85rem;">Check-in code unavailable — try refreshing the page.</div>`;
+    } else if (meta.status === 'waitlisted') {
+        container.innerHTML = `<div style="color:#b45309; font-size:0.85rem;">You're still on the waitlist — your check-in code will appear here once a spot opens up.</div>`;
     } else {
         new QRCode(container, { text: JSON.stringify({ rsvpId }), width: 200, height: 200 });
     }
@@ -1015,11 +1057,17 @@ function handleQrScanResult(decodedText) {
     .catch(() => window.showToast("Check-in failed. Try again.", "error"))
     .finally(() => setTimeout(() => { if (activeScanner) activeScanner.resume(); }, 1500));
 }
+
 window.handleDeleteEvent = function(eventId) {
     const opp = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
     if (!opp) return;
 
-    const confirmed = confirm(`Delete "${opp.title}"? This cannot be undone, and all registration data for this event will become inaccessible.`);
+    const regCount = Number(opp.registrations) || 0;
+    const warningLine = regCount > 0
+        ? ` This event has ${regCount} registration${regCount === 1 ? '' : 's'} — all of them will be permanently removed too.`
+        : '';
+
+    const confirmed = confirm(`Delete "${opp.title}"? This cannot be undone.${warningLine}`);
     if (!confirmed) return;
 
     fetch(`${API_BASE_URL}/events/delete`, {
@@ -1037,8 +1085,13 @@ window.handleDeleteEvent = function(eventId) {
         }
         return res.json();
     })
-    .then(() => {
-        window.showToast("Event deleted successfully.", "success");
+    .then((result) => {
+        const removedCount = Number(result.orphanedRsvpsRemoved) || 0;
+        const message = removedCount > 0
+            ? `Event deleted. ${removedCount} registration${removedCount === 1 ? '' : 's'} also removed.`
+            : "Event deleted successfully.";
+        window.showToast(message, "success");
+
         state.opportunities = state.opportunities.filter(o => (o.eventId || o.id) !== eventId);
         renderAllOpportunities();
         window.switchHostTimeline('active');
@@ -1048,6 +1101,7 @@ window.handleDeleteEvent = function(eventId) {
         window.showToast(err.message || "Failed to delete event.", "error");
     });
 };
+
 window.openEditEventModal = function(eventId) {
     const opp = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
     if (!opp) return;
