@@ -720,6 +720,16 @@ function fetchSocietyAccess() {
             state.accessibleOwners = data.accessibleOwners || [state.currentUser.email];
             state.isSocietyOwner = state.accessibleOwners.length === 1 &&
                                     state.accessibleOwners[0] === state.currentUser.email;
+
+            const newInvitations = data.newInvitations || [];
+            newInvitations.forEach(ownerEmail => {
+                window.showToast(`You've been added as a member of ${ownerEmail}'s society!`, "success");
+                fetch(`${API_BASE_URL}/society/mark-notified`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ownerEmail, memberEmail: state.currentUser.email })
+                }).catch(err => console.error("Failed to mark notified:", err));
+            });
         })
         .catch(err => {
             console.error("Failed to fetch society access:", err);
