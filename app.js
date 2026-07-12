@@ -532,22 +532,36 @@ window.switchHostTimeline = function(targetTimeline) {
         gridRoot.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #64748b; padding: 4rem 2rem;">No Event Found</div>`;
         return;
     }
-
-    let cardsHtml = '';
+let cardsHtml = '';
     filtered.forEach(opp => {
         const currentId = opp.eventId || opp.id;
+        const isOwner = opp.hostEmail && opp.hostEmail.toLowerCase() === (state.currentUser?.email || '').toLowerCase();
+        const borderColor = isOwner ? '#10b981' : '#3b82f6';
+
         cardsHtml += `
-          <div class="card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:1.25rem; display:flex; flex-direction:column; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <span style="font-size:0.75rem; font-weight:700; color:#1e40af; background:#dbeafe; padding:0.25rem 0.5rem; border-radius:4px; width:fit-content; text-transform:uppercase;">${opp.category || 'Event'}</span>
+          <div class="card" style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid ${borderColor}; border-radius:8px; padding:1.25rem; display:flex; flex-direction:column; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <span style="font-size:0.75rem; font-weight:700; color:#1e40af; background:#dbeafe; padding:0.25rem 0.5rem; border-radius:4px; width:fit-content; text-transform:uppercase;">${opp.category || 'Event'}</span>
+              <span style="font-size:0.65rem; font-weight:700; color:${isOwner ? '#059669' : '#2563eb'}; text-transform:uppercase;">${isOwner ? 'Your Event' : 'Member Access'}</span>
+            </div>
             <h4 style="font-size:1.1rem; font-weight:700; margin-top:0.5rem; color:#0f172a;">${opp.title}</h4>
             <span style="font-size:0.8rem; color:#64748b; margin-bottom:0.5rem;">${opp.society || 'Official Chapter'}</span>
             <span style="font-size:0.75rem; color:#94a3b8; margin-bottom:1rem;">Date: ${opp.eventDate || '2026'}</span>
-            <div style="margin-top:auto; padding-top:0.75rem; border-top:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:0.8rem; color:#4f46e5; font-weight:700;">${opp.registrations || 0} Applied</span>
-              ${opp.hostEmail && opp.hostEmail.toLowerCase() === (state.currentUser?.email || '').toLowerCase()
-                ? `<button onclick="window.handleDeleteEvent && window.handleDeleteEvent('${currentId}')" style="background:#ef4444; color:white; border:none; padding:0.35rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">Delete</button>`
-                : `<span style="font-size:0.75rem; color:#94a3b8; font-style:italic;">View only</span>`
-              }
+            <div style="margin-top:auto; padding-top:0.75rem; border-top:1px solid #f1f5f9; display:flex; flex-direction:column; gap:0.5rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.8rem; color:#4f46e5; font-weight:700;">${opp.registrations || 0} Applied</span>
+                ${isOwner
+                  ? `<button onclick="window.handleDeleteEvent && window.handleDeleteEvent('${currentId}')" style="background:#ef4444; color:white; border:none; padding:0.35rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">Delete</button>`
+                  : ``
+                }
+              </div>
+              <div style="display:flex; gap:0.5rem;">
+                <button onclick="window.openStatusModal('${currentId}')" style="flex:1; background:#eef2ff; color:#4f46e5; border:none; padding:0.4rem 0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">View Status</button>
+                ${isOwner
+                  ? `<button onclick="window.openAddMemberModal()" style="flex:1; background:#f0fdf4; color:#059669; border:none; padding:0.4rem 0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">+ Add Member</button>`
+                  : ``
+                }
+              </div>
             </div>
           </div>
         `;
@@ -761,6 +775,58 @@ window.handleAddMember = function(e) {
     .then(() => {
         window.showToast(`${memberEmail} added as a member!`, "success");
         document.getElementById('new-member-email').value = '';
+        window.closeAddMemberModal();
     })
     .catch(() => window.showToast("Failed to add member.", "error"));
+};
+
+window.openStatusModal = function(eventId) {
+    const opp = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
+    const overlay = document.getElementById('status-modal-overlay');
+    const titleEl = document.getElementById('status-modal-title');
+    const countEl = document.getElementById('status-modal-count');
+    const listEl = document.getElementById('status-modal-list');
+    if (!overlay) return;
+
+    titleEl.innerText = opp ? opp.title : 'Event Status';
+    countEl.innerText = 'Loading...';
+    listEl.innerHTML = '';
+    overlay.style.display = 'flex';
+
+    fetch(`${API_BASE_URL}/rsvp/by-event?eventId=${encodeURIComponent(eventId)}`)
+        .then(res => res.json())
+        .then(data => {
+            countEl.innerText = data.length;
+            if (data.length === 0) {
+                listEl.innerHTML = `<div style="text-align:center; color:#94a3b8; padding:1rem; font-size:0.85rem;">No registrations yet.</div>`;
+                return;
+            }
+            listEl.innerHTML = data.map(r => `
+                <div style="padding:0.6rem; background:#f8fafc; border-radius:6px; font-size:0.85rem;">
+                  <div style="font-weight:600; color:#0f172a;">${r.studentName}</div>
+                  <div style="color:#64748b; font-size:0.75rem;">${r.studentEmail}</div>
+                  ${r.paymentScreenshotUrl ? `<a href="${r.paymentScreenshotUrl}" target="_blank" style="color:#4f46e5; font-size:0.75rem;">View payment proof</a>` : ''}
+                </div>
+            `).join('');
+        })
+        .catch(err => {
+            console.error("Failed to load status:", err);
+            countEl.innerText = "Error";
+            listEl.innerHTML = `<div style="color:#ef4444; font-size:0.85rem;">Failed to load registrations.</div>`;
+        });
+};
+
+window.closeStatusModal = function() {
+    const overlay = document.getElementById('status-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
+};
+
+window.openAddMemberModal = function() {
+    const overlay = document.getElementById('add-member-modal-overlay');
+    if (overlay) overlay.style.display = 'flex';
+};
+
+window.closeAddMemberModal = function() {
+    const overlay = document.getElementById('add-member-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
 };
