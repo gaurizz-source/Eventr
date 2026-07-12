@@ -278,6 +278,54 @@ window.executeAwsRegistration = function(eventId) {
     });
 };
 
+window.handleCancelRsvp = function(eventId) {
+    const opp = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
+    const rsvpId = state.rsvpMeta[eventId];
+
+    if (!rsvpId) {
+        window.showToast("Cannot cancel — registration reference missing. Try refreshing.", "error");
+        return;
+    }
+
+    const confirmed = confirm(`Cancel your registration for "${opp ? opp.title : 'this event'}"? This cannot be undone.`);
+    if (!confirmed) return;
+
+    fetch(`${API_BASE_URL}/rsvp/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rsvpId, eventId })
+    })
+    .then(async res => {
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || "Failed to cancel registration.");
+        }
+        return res.json();
+    })
+    .then(() => {
+        window.showToast("Registration cancelled.", "success");
+
+        state.rsvps = state.rsvps.filter(id => id !== eventId);
+        delete state.rsvpMeta[eventId];
+
+        if (opp) {
+            opp.registrations = Math.max(0, (Number(opp.registrations) || 1) - 1);
+        }
+
+        renderRsvps();
+        renderAllOpportunities();
+
+        // If the student is currently looking at this event's detail page, refresh the register button
+        if (state.selectedEventId === eventId) {
+            window.openEventDetails(eventId);
+        }
+    })
+    .catch(err => {
+        console.error("Cancel RSVP failed:", err);
+        window.showToast(err.message || "Failed to cancel registration.", "error");
+    });
+};
+
 window.toggleAuthForm = function(formType) {
   state.currentAuthMode = formType;
   
@@ -483,9 +531,10 @@ function renderRsvps() {
   state.rsvps.forEach(oppId => {
     const opp = state.opportunities.find(o => (o.eventId === oppId || o.id === oppId));
     if (opp) {
-      html += `<div style="padding:0.5rem 0; font-size:0.85rem; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
-        <b>${opp.title}</b>
+      html += `<div style="padding:0.5rem 0; font-size:0.85rem; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+        <b style="flex:1;">${opp.title}</b>
         <button onclick="window.openQrModal('${oppId}')" style="background:#eef2ff; color:#4f46e5; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">QR Code</button>
+        <button onclick="window.handleCancelRsvp('${oppId}')" style="background:#fef2f2; color:#dc2626; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">Cancel</button>
       </div>`;
     }
   });
