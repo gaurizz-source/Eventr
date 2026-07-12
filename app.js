@@ -20,7 +20,8 @@ const state = {
   selectedEventId: null ,
   accessibleOwners: [],
   isSocietyOwner: false,
-  rsvpMeta: {}
+  rsvpMeta: {},
+  lastStatusModalData: { eventTitle: '', registrants: [] }
 };
 
 // --- INITIALIZATION RUNTIME ---
@@ -935,6 +936,11 @@ window.openStatusModal = function(eventId) {
     fetch(`${API_BASE_URL}/rsvp/by-event?eventId=${encodeURIComponent(eventId)}`)
         .then(res => res.json())
         .then(data => {
+            state.lastStatusModalData = { eventTitle: opp ? opp.title : 'Event', registrants: data };
+
+            const exportBtn = document.getElementById('status-modal-export-btn');
+            if (exportBtn) exportBtn.style.display = data.length > 0 ? 'inline-block' : 'none';
+
             countEl.innerText = `${data.length} (${data.filter(r => r.checkedIn).length} checked in)`;
             if (data.length === 0) {
                 listEl.innerHTML = `<div style="text-align:center; color:#94a3b8; padding:1rem; font-size:0.85rem;">No registrations yet.</div>`;
@@ -956,6 +962,49 @@ window.openStatusModal = function(eventId) {
             countEl.innerText = "Error";
             listEl.innerHTML = `<div style="color:#ef4444; font-size:0.85rem;">Failed to load registrations.</div>`;
         });
+};
+
+window.handleExportRegistrantsCsv = function() {
+    const { eventTitle, registrants } = state.lastStatusModalData;
+    if (!registrants || registrants.length === 0) {
+        window.showToast("No registrants to export.", "error");
+        return;
+    }
+
+    const headers = ["Student Name", "Email", "Registration Time", "Checked In", "Checked In At"];
+    const escapeCsvField = (val) => {
+        const str = String(val ?? '');
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+    };
+
+    const rows = registrants.map(r => [
+        r.studentName,
+        r.studentEmail,
+        r.registrationTime || '',
+        r.checkedIn ? 'Yes' : 'No',
+        r.checkedInAt || ''
+    ]);
+
+    const csvContent = [headers, ...rows]
+        .map(row => row.map(escapeCsvField).join(','))
+        .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const safeFileName = eventTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${safeFileName}_registrants.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    window.showToast("CSV exported successfully.", "success");
 };
 
 window.closeStatusModal = function() {

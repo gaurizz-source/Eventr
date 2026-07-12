@@ -432,7 +432,10 @@
         <h3 id="status-modal-title" style="margin:0; font-size:1.1rem; color:#0f172a;">Event Status</h3>
         <button onclick="window.closeStatusModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:#64748b;">&times;</button>
       </div>
-      <p style="font-size:0.9rem; color:#475569; margin-bottom:1rem;"><span id="status-modal-count">0</span> Registered</p>
+     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+  <p style="font-size:0.9rem; color:#475569; margin:0;"><span id="status-modal-count">0</span> Registered</p>
+  <button id="status-modal-export-btn" onclick="window.handleExportRegistrantsCsv()" style="display:none; background:#f0fdf4; color:#059669; border:none; padding:0.4rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">⬇ Export CSV</button>
+</div>
       <div id="status-modal-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
     </div>
   </div>
