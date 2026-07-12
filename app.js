@@ -19,7 +19,8 @@ const state = {
   opportunities: [],
   selectedEventId: null ,
   accessibleOwners: [],
-  isSocietyOwner: false
+  isSocietyOwner: false,
+  rsvpMeta: {}
 };
 
 // --- INITIALIZATION RUNTIME ---
@@ -482,7 +483,10 @@ function renderRsvps() {
   state.rsvps.forEach(oppId => {
     const opp = state.opportunities.find(o => (o.eventId === oppId || o.id === oppId));
     if (opp) {
-      html += `<div style="padding:0.5rem 0; font-size:0.85rem; border-bottom:1px solid #e2e8f0;"><b>${opp.title}</b></div>`;
+      html += `<div style="padding:0.5rem 0; font-size:0.85rem; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+        <b>${opp.title}</b>
+        <button onclick="window.openQrModal('${oppId}')" style="background:#eef2ff; color:#4f46e5; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">QR Code</button>
+      </div>`;
     }
   });
   root.innerHTML = html;
@@ -870,3 +874,85 @@ window.closeAddMemberModal = function() {
     const overlay = document.getElementById('add-member-modal-overlay');
     if (overlay) overlay.style.display = 'none';
 };
+
+// ─── QR CHECK-IN: STUDENT-SIDE QR DISPLAY ───
+window.openQrModal = function(eventId) {
+    const rsvpId = state.rsvpMeta[eventId];
+    const overlay = document.getElementById('qr-modal-overlay');
+    const container = document.getElementById('qr-code-container');
+    const label = document.getElementById('qr-modal-event-title');
+    if (!overlay || !container) return;
+
+    const opp = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
+    if (label) label.innerText = opp ? opp.title : 'Event Check-in';
+
+    container.innerHTML = '';
+    if (!rsvpId) {
+        container.innerHTML = `<div style="color:#ef4444; font-size:0.85rem;">Check-in code unavailable — try refreshing the page.</div>`;
+    } else {
+        new QRCode(container, { text: JSON.stringify({ rsvpId }), width: 200, height: 200 });
+    }
+    overlay.style.display = 'flex';
+};
+
+window.closeQrModal = function() {
+    const overlay = document.getElementById('qr-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
+};
+
+// ─── QR CHECK-IN: HOST-SIDE CAMERA SCANNER ───
+let activeScanner = null;
+
+window.openScannerModal = function(eventId) {
+    const overlay = document.getElementById('scanner-modal-overlay');
+    const resultBox = document.getElementById('scanner-result-box');
+    if (resultBox) resultBox.innerHTML = '';
+    if (overlay) overlay.style.display = 'flex';
+
+    activeScanner = new Html5Qrcode("qr-reader");
+    activeScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => handleQrScanResult(decodedText),
+        () => { /* ignore per-frame miss */ }
+    ).catch(err => window.showToast("Camera access failed: " + err, "error"));
+};
+
+window.closeScannerModal = function() {
+    const overlay = document.getElementById('scanner-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
+    if (activeScanner) {
+        activeScanner.stop().then(() => activeScanner.clear()).catch(() => {});
+        activeScanner = null;
+    }
+};
+
+function handleQrScanResult(decodedText) {
+    let rsvpId;
+    try { rsvpId = JSON.parse(decodedText).rsvpId; } catch (e) { rsvpId = decodedText; }
+    if (!rsvpId || !activeScanner) return;
+
+    activeScanner.pause(true);
+
+    fetch(`${API_BASE_URL}/rsvp/checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rsvpId })
+    })
+    .then(async res => {
+        const data = await res.json();
+        const resultBox = document.getElementById('scanner-result-box');
+        if (res.status === 200) {
+            window.showToast("✅ Checked in: " + (data.rsvp?.studentName || rsvpId), "success");
+            if (resultBox) resultBox.innerHTML = `<div style="color:#059669; font-weight:700;">✅ ${data.rsvp?.studentName || 'Attendee'} checked in</div>`;
+        } else if (res.status === 409) {
+            window.showToast("Already checked in.", "error");
+            if (resultBox) resultBox.innerHTML = `<div style="color:#d97706; font-weight:700;">⚠️ Already checked in</div>`;
+        } else {
+            window.showToast(data.error || "Invalid QR code.", "error");
+            if (resultBox) resultBox.innerHTML = `<div style="color:#ef4444; font-weight:700;">❌ ${data.error || 'Invalid code'}</div>`;
+        }
+    })
+    .catch(() => window.showToast("Check-in failed. Try again.", "error"))
+    .finally(() => setTimeout(() => { if (activeScanner) activeScanner.resume(); }, 1500));
+}
