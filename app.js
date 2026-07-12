@@ -642,8 +642,11 @@ let cardsHtml = '';
             <div style="margin-top:auto; padding-top:0.75rem; border-top:1px solid #f1f5f9; display:flex; flex-direction:column; gap:0.5rem;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:0.8rem; color:#4f46e5; font-weight:700;">${opp.registrations || 0} Applied</span>
-                ${isOwner
-                  ? `<button onclick="window.handleDeleteEvent && window.handleDeleteEvent('${currentId}')" style="background:#ef4444; color:white; border:none; padding:0.35rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">Delete</button>`
+               ${isOwner
+                  ? `<div style="display:flex; gap:0.5rem;">
+                       <button onclick="window.openEditEventModal('${currentId}')" style="background:#eff6ff; color:#2563eb; border:none; padding:0.35rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">Edit</button>
+                       <button onclick="window.handleDeleteEvent && window.handleDeleteEvent('${currentId}')" style="background:#ef4444; color:white; border:none; padding:0.35rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">Delete</button>
+                     </div>`
                   : ``
                 }
               </div>
@@ -1043,5 +1046,77 @@ window.handleDeleteEvent = function(eventId) {
     .catch(err => {
         console.error("Delete event failed:", err);
         window.showToast(err.message || "Failed to delete event.", "error");
+    });
+};
+window.openEditEventModal = function(eventId) {
+    const opp = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
+    if (!opp) return;
+
+    document.getElementById('edit-event-id').value = eventId;
+    document.getElementById('edit-event-title').value = opp.title || '';
+    document.getElementById('edit-event-society').value = opp.society || '';
+    document.getElementById('edit-event-category').value = opp.category || 'hackathon';
+    document.getElementById('edit-event-image').value = opp.imageUrl || '';
+    document.getElementById('edit-event-capacity').value = opp.capacity || '';
+    document.getElementById('edit-event-start-date').value = opp.eventDate || '';
+    document.getElementById('edit-event-end-date').value = opp.endDate || '';
+
+    const payCheckbox = document.getElementById('edit-event-requires-payment');
+    const payWrap = document.getElementById('edit-payment-details-wrap');
+    payCheckbox.checked = !!opp.isPaid;
+    payWrap.style.display = opp.isPaid ? 'grid' : 'none';
+    document.getElementById('edit-event-amount').value = opp.amount || '';
+    document.getElementById('edit-event-upi').value = opp.upi || '';
+
+    document.getElementById('edit-event-modal-overlay').style.display = 'flex';
+};
+
+window.closeEditEventModal = function() {
+    document.getElementById('edit-event-modal-overlay').style.display = 'none';
+};
+
+window.handleEditEventSubmit = function(e) {
+    e.preventDefault();
+
+    const eventId = document.getElementById('edit-event-id').value;
+    const title = document.getElementById('edit-event-title').value.trim();
+    const society = document.getElementById('edit-event-society').value.trim();
+    const category = document.getElementById('edit-event-category').value;
+    const imageUrl = document.getElementById('edit-event-image').value.trim();
+    const capacity = document.getElementById('edit-event-capacity').value.trim();
+    const startDate = document.getElementById('edit-event-start-date').value;
+    const endDate = document.getElementById('edit-event-end-date').value;
+    const isPaid = document.getElementById('edit-event-requires-payment').checked;
+    const amount = isPaid ? document.getElementById('edit-event-amount').value : null;
+    const upi = isPaid ? document.getElementById('edit-event-upi').value : null;
+
+    fetch(`${API_BASE_URL}/events/edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            eventId,
+            hostEmail: state.currentUser ? state.currentUser.email : '',
+            title, society, category, imageUrl,
+            eventDate: startDate,
+            endDate: endDate,
+            durationText: `${startDate} to ${endDate}`,
+            capacity, isPaid, amount, upi
+        })
+    })
+    .then(async res => {
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || "Failed to update event.");
+        }
+        return res.json();
+    })
+    .then(() => {
+        window.showToast("Event updated successfully!", "success");
+        window.closeEditEventModal();
+        fetchLiveOpportunities();
+    })
+    .catch(err => {
+        console.error("Edit event failed:", err);
+        window.showToast(err.message || "Failed to update event.", "error");
     });
 };

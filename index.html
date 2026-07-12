@@ -340,6 +340,91 @@
     </div>
   </footer>
 
+  <!-- Edit Event Modal -->
+<div id="edit-event-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:12px; padding:1.5rem; max-width:600px; width:90%; max-height:85vh; overflow-y:auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+      <h3 style="margin:0; font-size:1.1rem; color:#0f172a;">Edit Event</h3>
+      <button onclick="window.closeEditEventModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:#64748b;">&times;</button>
+    </div>
+
+    <form id="edit-event-form" onsubmit="window.handleEditEventSubmit(event)" style="display:flex; flex-direction:column; gap:1.1rem;">
+      <input type="hidden" id="edit-event-id">
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; color:#475569;">Event Title</label>
+          <input type="text" id="edit-event-title" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; margin-top:0.25rem;">
+        </div>
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; color:#475569;">Hosting Society</label>
+          <input type="text" id="edit-event-society" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; margin-top:0.25rem;">
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; color:#475569;">Category</label>
+          <select id="edit-event-category" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; margin-top:0.25rem;">
+            <option value="hackathon">Hackathon</option>
+            <option value="workshop">Workshop</option>
+            <option value="seminar">Seminar</option>
+            <option value="webinar">Webinar</option>
+            <option value="coding">Coding Contest</option>
+            <option value="quiz">Quiz</option>
+            <option value="cultural">Cultural</option>
+            <option value="fest">College Fest</option>
+            <option value="technical">Technical</option>
+            <option value="sports">Sports</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; color:#475569;">Banner Image URL</label>
+          <input type="url" id="edit-event-image" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; margin-top:0.25rem;">
+        </div>
+      </div>
+
+      <div>
+        <label style="font-size:0.85rem; font-weight:600; color:#475569;">Max Capacity (leave blank for unlimited)</label>
+        <input type="number" id="edit-event-capacity" min="1" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; margin-top:0.25rem;">
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; color:#475569;">Starting Date</label>
+          <input type="date" id="edit-event-start-date" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; margin-top:0.25rem;">
+        </div>
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; color:#475569;">Ending Date</label>
+          <input type="date" id="edit-event-end-date" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; margin-top:0.25rem;">
+        </div>
+      </div>
+
+      <div style="background:#f8fafc; padding:1rem; border-radius:8px; border:1px solid #e2e8f0;">
+        <label style="font-size:0.85rem; font-weight:600; color:#475569; display:flex; align-items:center; gap:0.5rem;">
+          <input type="checkbox" id="edit-event-requires-payment" onchange="document.getElementById('edit-payment-details-wrap').style.display = this.checked ? 'grid' : 'none'">
+          This event requires Online Payment / Registration Fee
+        </label>
+        <div id="edit-payment-details-wrap" style="display:none; grid-template-columns:1fr 1fr; gap:1rem; margin-top:0.75rem;">
+          <div>
+            <label style="font-size:0.8rem; font-weight:600; color:#64748b;">Amount (INR)</label>
+            <input type="number" id="edit-event-amount" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; margin-top:0.25rem;">
+          </div>
+          <div>
+            <label style="font-size:0.8rem; font-weight:600; color:#64748b;">Payment Link / UPI ID</label>
+            <input type="text" id="edit-event-upi" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; margin-top:0.25rem;">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:1rem; justify-content:flex-end;">
+        <button type="button" onclick="window.closeEditEventModal()" style="background:#e2e8f0; color:#475569; border:none; padding:0.65rem 1.25rem; border-radius:6px; cursor:pointer; font-weight:600;">Cancel</button>
+        <button type="submit" style="background:#4f46e5; color:white; border:none; padding:0.65rem 1.5rem; border-radius:6px; cursor:pointer; font-weight:600;">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
   <!-- Participant Status Modal -->
   <div id="status-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); z-index:1000; align-items:center; justify-content:center;">
     <div style="background:#fff; border-radius:12px; padding:1.5rem; max-width:500px; width:90%; max-height:80vh; overflow-y:auto;">
