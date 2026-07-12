@@ -172,7 +172,14 @@ window.openEventDetails = function(eventId) {
     if (document.getElementById('detail-duration-dates')) document.getElementById('detail-duration-dates').innerText = opp.durationText || opp.eventDate;
     
     const heroImg = document.getElementById('detail-hero-image');
-    if (heroImg) heroImg.src = opp.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+    if (heroImg) {
+        heroImg.onerror = function() {
+            this.onerror = null;
+            this.src = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+            window.showToast('Event banner failed to load — showing default image', 'error');
+        };
+        heroImg.src = opp.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+    }
 
     const paymentNoticeBar = document.getElementById('detail-payment-notice-bar');
     if (paymentNoticeBar) {
@@ -498,7 +505,7 @@ function renderAllOpportunities() {
     allHtml += `
       <div class="card" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
         <div class="card-banner" style="height: 160px; width: 100%; background: #cbd5e1; position: relative;">
-          <img src="${cardImg}" style="width:100%; height:100%; object-fit:cover;" alt="Banner">
+         <img src="${cardImg}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'; window.showToast('Event banner failed to load — showing default image', 'error');" style="width:100%; height:100%; object-fit:cover;" alt="Banner">
           <span class="category-badge" style="position: absolute; top: 0.5rem; left: 0.5rem; background: #4f46e5; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight:700;">${opp.category || 'Event'}</span>
         </div>
         <div class="card-body" style="padding: 1rem; flex-grow: 1; display: flex; flex-direction: column;">
@@ -799,7 +806,7 @@ function renderFilteredOpportunities(dataset) {
         allHtml += `
           <div class="card" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
             <div class="card-banner" style="height: 160px; width: 100%; background: #cbd5e1; position: relative;">
-              <img src="${cardImg}" style="width:100%; height:100%; object-fit:cover;" alt="Banner">
+              <img src="${cardImg}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'; window.showToast('Event banner failed to load — showing default image', 'error');" style="width:100%; height:100%; object-fit:cover;" alt="Banner">
               <span class="category-badge" style="position: absolute; top: 0.5rem; left: 0.5rem; background: #4f46e5; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight:700;">${opp.category || 'Event'}</span>
             </div>
             <div class="card-body" style="padding: 1rem; flex-grow: 1; display: flex; flex-direction: column;">
@@ -1005,3 +1012,36 @@ function handleQrScanResult(decodedText) {
     .catch(() => window.showToast("Check-in failed. Try again.", "error"))
     .finally(() => setTimeout(() => { if (activeScanner) activeScanner.resume(); }, 1500));
 }
+window.handleDeleteEvent = function(eventId) {
+    const opp = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
+    if (!opp) return;
+
+    const confirmed = confirm(`Delete "${opp.title}"? This cannot be undone, and all registration data for this event will become inaccessible.`);
+    if (!confirmed) return;
+
+    fetch(`${API_BASE_URL}/events/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            eventId: eventId,
+            hostEmail: state.currentUser ? state.currentUser.email : ''
+        })
+    })
+    .then(async res => {
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || "Failed to delete event.");
+        }
+        return res.json();
+    })
+    .then(() => {
+        window.showToast("Event deleted successfully.", "success");
+        state.opportunities = state.opportunities.filter(o => (o.eventId || o.id) !== eventId);
+        renderAllOpportunities();
+        window.switchHostTimeline('active');
+    })
+    .catch(err => {
+        console.error("Delete event failed:", err);
+        window.showToast(err.message || "Failed to delete event.", "error");
+    });
+};
