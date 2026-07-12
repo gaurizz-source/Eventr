@@ -121,9 +121,14 @@
           <h2 class="section-title">Society Management Workspace</h2>
           <p class="section-subtitle">Deploy operational challenges, compile active participant arrays, and manage event schedules.</p>
         </div>
-        <button type="button" class="nav-btn auth-btn" onclick="window.toggleCreateEventForm()" style="margin: 0; padding: 0.6rem 1.25rem;">
-          + Launch New Event
-        </button>
+       <div style="display:flex; gap:0.75rem;">
+          <button type="button" id="header-add-member-btn" class="nav-btn auth-btn" onclick="window.openAddMemberModal()" style="margin: 0; padding: 0.6rem 1.25rem; background:#059669; display:none;">
+            + Add Member
+          </button>
+          <button type="button" class="nav-btn auth-btn" onclick="window.toggleCreateEventForm()" style="margin: 0; padding: 0.6rem 1.25rem;">
+            + Launch New Event
+          </button>
+        </div>
       </div>
      
 

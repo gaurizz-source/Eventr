@@ -113,7 +113,13 @@ function fetchUserRSVPs() {
     })
     .then(res => res.json())
     .then(data => {
-        state.rsvps = data.map(r => r.eventId);
+        state.rsvps = data
+            .filter(r => {
+                const event = state.opportunities.find(o => (o.eventId === r.eventId || o.id === r.eventId));
+                if (!event) return true; // event data not loaded yet, keep it rather than silently drop
+                return window.getEventTimelineStatus(event.eventDate) !== 'past';
+            })
+            .map(r => r.eventId);
         renderRsvps();
         renderAllOpportunities();
     })
@@ -417,7 +423,10 @@ function renderAllOpportunities() {
   if (!allGrid) return;
   
   let allHtml = '';
-  const dataset = state.opportunities;
+  const dataset = state.opportunities.filter(opp => {
+      const status = window.getEventTimelineStatus(opp.eventDate);
+      return status !== 'past';
+  });
 
   dataset.forEach(opp => {
     const currentId = opp.eventId || opp.id; 
@@ -518,9 +527,19 @@ window.switchHostTimeline = function(targetTimeline) {
     if (!gridRoot) return;
 
    // Only show events the current user owns or has been added to as a member
-    const dataset = state.opportunities.filter(opp => 
-        state.accessibleOwners.includes((opp.hostEmail || '').toLowerCase())
-    );
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 30);
+    cutoffDate.setHours(0, 0, 0, 0);
+
+    // Only show events the current user owns/is a member of, and that ended within the last 30 days
+    const dataset = state.opportunities.filter(opp => {
+        const isAccessible = state.accessibleOwners.includes((opp.hostEmail || '').toLowerCase());
+        if (!isAccessible) return false;
+
+        const eventDate = new Date(opp.eventDate);
+        if (isNaN(eventDate.getTime())) return true; // keep events with bad/missing dates, don't silently hide them
+        return eventDate >= cutoffDate;
+    });
 
     const filtered = dataset.filter(opp => {
         const targetDate = opp.eventDate || opp.date;
@@ -536,8 +555,8 @@ let cardsHtml = '';
     filtered.forEach(opp => {
         const currentId = opp.eventId || opp.id;
         const isOwner = opp.hostEmail && opp.hostEmail.toLowerCase() === (state.currentUser?.email || '').toLowerCase();
+        const isPastEvent = window.getEventTimelineStatus(opp.eventDate) === 'past';
         const borderColor = isOwner ? '#10b981' : '#3b82f6';
-
         cardsHtml += `
           <div class="card" style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid ${borderColor}; border-radius:8px; padding:1.25rem; display:flex; flex-direction:column; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -557,7 +576,7 @@ let cardsHtml = '';
               </div>
               <div style="display:flex; gap:0.5rem;">
                 <button onclick="window.openStatusModal('${currentId}')" style="flex:1; background:#eef2ff; color:#4f46e5; border:none; padding:0.4rem 0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">View Status</button>
-                ${isOwner
+                ${isOwner && !isPastEvent
                   ? `<button onclick="window.openAddMemberModal()" style="flex:1; background:#f0fdf4; color:#059669; border:none; padding:0.4rem 0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">+ Add Member</button>`
                   : ``
                 }
@@ -661,6 +680,9 @@ function applyDashboardFilters() {
     today.setHours(0, 0, 0, 0);
 
     const filtered = state.opportunities.filter(opp => {
+        const status = window.getEventTimelineStatus(opp.eventDate);
+        if (status === 'past') return false;
+
         if (searchTerm) {
             const haystack = `${opp.title} ${opp.society}`.toLowerCase();
             if (!haystack.includes(searchTerm)) return false;
@@ -756,8 +778,8 @@ function updateHostPermissions() {
     const launchBtn = document.querySelector('button[onclick="window.toggleCreateEventForm()"]');
     if (launchBtn) launchBtn.style.display = state.isSocietyOwner ? 'inline-block' : 'none';
 
-    const membersPanel = document.getElementById('society-members-panel');
-    if (membersPanel) membersPanel.style.display = state.isSocietyOwner ? 'block' : 'none';
+    const addMemberBtn = document.getElementById('header-add-member-btn');
+    if (addMemberBtn) addMemberBtn.style.display = state.isSocietyOwner ? 'inline-block' : 'none';
 }
 
 window.handleAddMember = function(e) {
