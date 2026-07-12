@@ -184,12 +184,22 @@ window.openEventDetails = function(eventId) {
       }
     }
 
+  const capacityNoteEl = document.getElementById('detail-capacity-note');
+    const isFull = opp.capacity && (Number(opp.registrations) || 0) >= Number(opp.capacity);
+    if (capacityNoteEl) {
+        capacityNoteEl.innerText = opp.capacity ? `/ ${opp.capacity} spots` : '';
+    }
+
     const regBtn = document.getElementById('detail-register-btn');
     if (regBtn) {
         const isReg = state.rsvps.includes(eventId);
         if (isReg) {
             regBtn.innerText = "Registered ✓";
             regBtn.style.background = "#10b981";
+            regBtn.disabled = true;
+        } else if (isFull) {
+            regBtn.innerText = "Event Full";
+            regBtn.style.background = "#94a3b8";
             regBtn.disabled = true;
         } else {
             regBtn.innerText = "Register Now";
@@ -226,6 +236,9 @@ window.executeAwsRegistration = function(eventId) {
         })
     })
     .then(async res => {
+        if (res.status === 409) {
+            throw new Error("This event is full. Registration closed.");
+        }
         if (!res.ok) {
             const errorText = await res.text();
             throw new Error(`AWS Server Error (${res.status}): ${errorText}`);
@@ -254,12 +267,12 @@ window.executeAwsRegistration = function(eventId) {
         renderRsvps();
         renderAllOpportunities(); 
     })
-    .catch(err => {
+ .catch(err => {
         console.error("🔴 AWS Sync Failure:", err.message);
-        window.showToast("Registration failed. Please try again.", "error");
+        window.showToast(err.message.includes("full") ? err.message : "Registration failed. Please try again.", "error");
         if (regBtn) {
-            regBtn.innerText = "Register Now";
-            regBtn.disabled = false;
+            regBtn.innerText = err.message.includes("full") ? "Event Full" : "Register Now";
+            regBtn.disabled = err.message.includes("full");
         }
     });
 };
@@ -599,6 +612,7 @@ window.handleCreateEventSubmit = function(e) {
   const startDate = document.getElementById('form-event-start-date').value;
   const endDate = document.getElementById('form-event-end-date').value;
   
+  const capacity = document.getElementById('form-event-capacity').value.trim();
   const requiresPayment = document.getElementById('form-event-requires-payment').checked;
   const paymentAmount = requiresPayment ? document.getElementById('form-event-amount').value : null;
   const paymentUpi = requiresPayment ? document.getElementById('form-event-upi').value : null;
@@ -610,7 +624,7 @@ window.handleCreateEventSubmit = function(e) {
   const formattedDuration = `${startDate} to ${endDate}`;
   const customId = "evt_" + Date.now();
 
-  const newEventObj = {
+const newEventObj = {
     eventId: customId,
     id: customId,
     title: title,
@@ -624,10 +638,10 @@ window.handleCreateEventSubmit = function(e) {
     isPaid: requiresPayment,
     amount: paymentAmount,
     upi: paymentUpi,
+    capacity: capacity ? Number(capacity) : null,
 
     hostEmail: state.currentUser && state.currentUser.email ? state.currentUser.email : null
   };
-
   state.opportunities.unshift(newEventObj); 
 
   // handleCreateEventSubmit ke andar unshift wale line ke paas ye API call lagayein:
