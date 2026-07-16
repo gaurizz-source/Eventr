@@ -915,6 +915,15 @@ function fetchSocietyAccess() {
                     body: JSON.stringify({ ownerEmail, memberEmail: state.currentUser.email })
                 }).catch(err => console.error("Failed to mark notified:", err));
             });
+            const newRemovals = data.newRemovals || [];
+            newRemovals.forEach(ownerEmail => {
+                window.showToast(`You've been removed from ${ownerEmail}'s society.`, "error");
+                fetch(`${API_BASE_URL}/society/mark-removal-notified`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ownerEmail, memberEmail: state.currentUser.email })
+                }).catch(err => console.error("Failed to mark removal notified:", err));
+            });
         })
         .catch(err => {
             console.error("Failed to fetch society access:", err);
@@ -1046,6 +1055,52 @@ window.closeStatusModal = function() {
 window.openAddMemberModal = function() {
     const overlay = document.getElementById('add-member-modal-overlay');
     if (overlay) overlay.style.display = 'flex';
+    loadMembersList();
+};
+
+function loadMembersList() {
+    const container = document.getElementById('members-list-container');
+    if (!container || !state.currentUser) return;
+
+    container.innerHTML = `<div style="color:#94a3b8; font-size:0.8rem;">Loading...</div>`;
+
+    fetch(`${API_BASE_URL}/society/members?ownerEmail=${encodeURIComponent(state.currentUser.email)}`)
+        .then(res => res.json())
+        .then(members => {
+            if (!members || members.length === 0) {
+                container.innerHTML = `<div style="color:#94a3b8; font-size:0.8rem;">No members added yet.</div>`;
+                return;
+            }
+            container.innerHTML = members.map(m => `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:0.5rem 0.75rem; border-radius:6px;">
+                  <span style="font-size:0.8rem; color:#334155;">${m.memberEmail}</span>
+                  <button onclick="window.handleRemoveMember('${m.memberEmail}')" style="background:#fef2f2; color:#dc2626; border:none; padding:0.25rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.7rem; font-weight:600;">Remove</button>
+                </div>
+            `).join('');
+        })
+        .catch(() => {
+            container.innerHTML = `<div style="color:#ef4444; font-size:0.8rem;">Failed to load members.</div>`;
+        });
+}
+
+window.handleRemoveMember = function(memberEmail) {
+    const confirmed = confirm(`Remove ${memberEmail} from your society? They'll lose access to all your events.`);
+    if (!confirmed) return;
+
+    fetch(`${API_BASE_URL}/society/members/remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerEmail: state.currentUser.email, memberEmail })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Failed to remove member");
+        return res.json();
+    })
+    .then(() => {
+        window.showToast(`${memberEmail} removed from society.`, "success");
+        loadMembersList();
+    })
+    .catch(() => window.showToast("Failed to remove member.", "error"));
 };
 
 window.closeAddMemberModal = function() {
