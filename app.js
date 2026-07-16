@@ -904,24 +904,25 @@ function fetchSocietyAccess() {
         .then(res => res.json())
         .then(data => {
             state.accessibleOwners = data.accessibleOwners || [state.currentUser.email];
-            state.isSocietyOwner = true; // Har student apna event launch kar sakta hai, chahe wo kahi member bhi ho
+            state.isSocietyOwner = true;
 
             const newInvitations = data.newInvitations || [];
-            newInvitations.forEach(ownerEmail => {
-                window.showToast(`You've been added as a member of ${societyName}!`, "success");
+            newInvitations.forEach(invite => {
+                window.showToast(`You've been added as a member of ${invite.societyName}!`, "success");
                 fetch(`${API_BASE_URL}/society/mark-notified`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ownerEmail, memberEmail: state.currentUser.email })
+                    body: JSON.stringify({ ownerEmail: invite.ownerEmail, memberEmail: state.currentUser.email })
                 }).catch(err => console.error("Failed to mark notified:", err));
             });
+
             const newRemovals = data.newRemovals || [];
-            newRemovals.forEach(ownerEmail => {
-                window.showToast(`You've been removed from ${societyName}.`, "error");
+            newRemovals.forEach(removal => {
+                window.showToast(`You've been removed from ${removal.societyName}.`, "error");
                 fetch(`${API_BASE_URL}/society/mark-removal-notified`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ownerEmail, memberEmail: state.currentUser.email })
+                    body: JSON.stringify({ ownerEmail: removal.ownerEmail, memberEmail: state.currentUser.email })
                 }).catch(err => console.error("Failed to mark removal notified:", err));
             });
         })
