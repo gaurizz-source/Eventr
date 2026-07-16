@@ -179,6 +179,7 @@ window.openEventDetails = function(eventId) {
     if (document.getElementById('detail-category-badge')) document.getElementById('detail-category-badge').innerText = opp.category || 'General';
     if (document.getElementById('detail-reg-count')) document.getElementById('detail-reg-count').innerText = opp.registrations || 0;
     if (document.getElementById('detail-duration-dates')) document.getElementById('detail-duration-dates').innerText = opp.durationText || opp.eventDate;
+    renderEventSchedule(opp);
     
     const heroImg = document.getElementById('detail-hero-image');
     if (heroImg) {
@@ -754,7 +755,7 @@ const newEventObj = {
     amount: paymentAmount,
     upi: paymentUpi,
     capacity: capacity ? Number(capacity) : null,
-
+    schedule: collectScheduleFromForm(),
     hostEmail: state.currentUser && state.currentUser.email ? state.currentUser.email : null
   };
   state.opportunities.unshift(newEventObj); 
@@ -786,6 +787,8 @@ fetch(`${API_BASE_URL}/events`, { // Aapka event create karne ka endpoint
 
   window.showToast("Event successfully published across platform!", "success");
   document.getElementById('create-event-form').reset();
+  document.getElementById('schedule-days-container').innerHTML = '';
+  scheduleDayCounter = 0;
   document.getElementById('payment-details-wrap').style.display = 'none';
   window.toggleCreateEventForm(); 
 
@@ -1417,4 +1420,82 @@ function renderAnalyticsCharts(results) {
             scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
         }
     });
+}
+// ─── MULTI-DAY SCHEDULE BUILDER (create event form) ───
+let scheduleDayCounter = 0;
+
+window.addScheduleDay = function() {
+    scheduleDayCounter++;
+    const dayId = `day-${scheduleDayCounter}`;
+    const container = document.getElementById('schedule-days-container');
+    const dayBlock = document.createElement('div');
+    dayBlock.id = dayId;
+    dayBlock.style.cssText = 'background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:0.75rem;';
+    dayBlock.innerHTML = `
+      <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.5rem;">
+        <input type="text" class="schedule-day-label" placeholder="Day 1" value="Day ${scheduleDayCounter}" style="flex:1; padding:0.4rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.8rem;">
+        <input type="date" class="schedule-day-date" style="padding:0.4rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.8rem;">
+        <button type="button" onclick="document.getElementById('${dayId}').remove()" style="background:#fef2f2; color:#dc2626; border:none; padding:0.35rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem;">✕</button>
+      </div>
+      <div class="schedule-items-container" style="display:flex; flex-direction:column; gap:0.4rem; margin-bottom:0.5rem;"></div>
+      <button type="button" onclick="window.addScheduleItem('${dayId}')" style="background:#eef2ff; color:#4f46e5; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">+ Add Agenda Item</button>
+    `;
+    container.appendChild(dayBlock);
+};
+
+window.addScheduleItem = function(dayId) {
+    const itemsContainer = document.querySelector(`#${dayId} .schedule-items-container`);
+    const itemRow = document.createElement('div');
+    itemRow.style.cssText = 'display:flex; gap:0.5rem;';
+    itemRow.innerHTML = `
+      <input type="text" class="schedule-item-time" placeholder="10:00 AM" style="width:100px; padding:0.4rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.8rem;">
+      <input type="text" class="schedule-item-title" placeholder="Opening Ceremony" style="flex:1; padding:0.4rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.8rem;">
+      <button type="button" onclick="this.parentElement.remove()" style="background:#fef2f2; color:#dc2626; border:none; padding:0.3rem 0.5rem; border-radius:6px; cursor:pointer; font-size:0.7rem;">✕</button>
+    `;
+    itemsContainer.appendChild(itemRow);
+};
+
+function collectScheduleFromForm() {
+    const dayBlocks = document.querySelectorAll('#schedule-days-container > div');
+    const schedule = [];
+    dayBlocks.forEach(dayBlock => {
+        const dayLabel = dayBlock.querySelector('.schedule-day-label').value.trim() || 'Day';
+        const dayDate = dayBlock.querySelector('.schedule-day-date').value;
+        const items = [];
+        dayBlock.querySelectorAll('.schedule-items-container > div').forEach(itemRow => {
+            const time = itemRow.querySelector('.schedule-item-time').value.trim();
+            const itemTitle = itemRow.querySelector('.schedule-item-title').value.trim();
+            if (itemTitle) {
+                items.push({ time, title: itemTitle });
+            }
+        });
+        schedule.push({ dayLabel, date: dayDate, items });
+    });
+    return schedule;
+}
+
+// ─── MULTI-DAY SCHEDULE DISPLAY (event details page) ───
+function renderEventSchedule(opp) {
+    const scheduleSection = document.getElementById('detail-schedule-section');
+    const scheduleContent = document.getElementById('detail-schedule-content');
+    if (!scheduleSection || !scheduleContent) return;
+
+    if (opp.schedule && opp.schedule.length > 0) {
+        scheduleSection.style.display = 'block';
+        scheduleContent.innerHTML = opp.schedule.map(day => `
+          <div style="border-left:3px solid #4f46e5; padding-left:1rem;">
+            <div style="font-weight:700; color:#0f172a; margin-bottom:0.5rem;">${day.dayLabel}${day.date ? ` — ${day.date}` : ''}</div>
+            <div style="display:flex; flex-direction:column; gap:0.4rem;">
+              ${(day.items || []).map(item => `
+                <div style="display:flex; gap:0.75rem; font-size:0.85rem; color:#475569;">
+                  <span style="font-weight:600; color:#4f46e5; min-width:80px;">${item.time || ''}</span>
+                  <span>${item.title}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('');
+    } else {
+        scheduleSection.style.display = 'none';
+    }
 }
