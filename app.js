@@ -116,10 +116,12 @@ function fetchUserRSVPs() {
     .then(res => res.json())
     .then(data => {
     const kept = data.filter(r => {
-        const event = state.opportunities.find(o => (o.eventId === r.eventId || o.id === r.eventId));
-        if (!event) return true;
-        return window.getEventTimelineStatus(event.eventDate) !== 'past';
-    });
+    const event = state.opportunities.find(o => (o.eventId === r.eventId || o.id === r.eventId));
+    if (!event) return true;
+    const isPast = window.getEventTimelineStatus(event.eventDate) === 'past';
+    if (!isPast) return true;
+    return (r.status || 'confirmed') !== 'waitlisted';
+});
     state.rsvps = kept.map(r => r.eventId);
     kept.forEach(r => {
         state.rsvpMeta[r.eventId] = {
@@ -1289,3 +1291,130 @@ window.handleDownloadCertificate = function(eventId) {
 
     window.showToast("Certificate downloaded!", "success");
 };
+
+// ─── ANALYTICS DASHBOARD ───
+let analyticsTrendChart = null;
+let analyticsCategoryChart = null;
+
+window.openAnalyticsModal = function() {
+    const overlay = document.getElementById('analytics-modal-overlay');
+    const loadingEl = document.getElementById('analytics-loading');
+    const contentEl = document.getElementById('analytics-content');
+    if (!overlay) return;
+
+    overlay.style.display = 'flex';
+    loadingEl.style.display = 'block';
+    contentEl.style.display = 'none';
+
+    // Every event this user owns or has member access to — no time-window cutoff,
+    // since analytics should cover the full history, not just the last 30 days.
+    const myEvents = state.opportunities.filter(opp =>
+        state.accessibleOwners.includes((opp.hostEmail || '').toLowerCase())
+    );
+
+    if (myEvents.length === 0) {
+        loadingEl.innerText = "No events found to analyze yet.";
+        return;
+    }
+
+    Promise.all(
+        myEvents.map(opp => {
+            const eventId = opp.eventId || opp.id;
+            return fetch(`${API_BASE_URL}/rsvp/by-event?eventId=${encodeURIComponent(eventId)}`)
+                .then(res => res.json())
+                .then(rsvps => ({ opp, rsvps: Array.isArray(rsvps) ? rsvps : [] }))
+                .catch(() => ({ opp, rsvps: [] }));
+        })
+    ).then(results => {
+        renderAnalyticsCharts(results);
+        loadingEl.style.display = 'none';
+        contentEl.style.display = 'block';
+    });
+};
+
+window.closeAnalyticsModal = function() {
+    const overlay = document.getElementById('analytics-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
+};
+
+function renderAnalyticsCharts(results) {
+    // --- Registration trends: daily counts over the last 30 days ---
+    const dayBuckets = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (let i = 29; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        dayBuckets[key] = 0;
+    }
+
+    // --- Category popularity: total registrations per category ---
+    const categoryCounts = {};
+
+    results.forEach(({ opp, rsvps }) => {
+        const category = opp.category || 'Other';
+        categoryCounts[category] = (categoryCounts[category] || 0) + rsvps.length;
+
+        rsvps.forEach(r => {
+            if (!r.registrationTime) return;
+            const key = r.registrationTime.slice(0, 10);
+            if (key in dayBuckets) {
+                dayBuckets[key]++;
+            }
+        });
+    });
+
+    const trendLabels = Object.keys(dayBuckets).map(k => {
+        const d = new Date(k);
+        return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+    });
+    const trendData = Object.values(dayBuckets);
+
+    const trendCtx = document.getElementById('analytics-trend-chart');
+    if (analyticsTrendChart) analyticsTrendChart.destroy();
+    analyticsTrendChart = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'Registrations',
+                data: trendData,
+                borderColor: '#4f46e5',
+                backgroundColor: 'rgba(79,70,229,0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+
+    const categoryLabels = Object.keys(categoryCounts);
+    const categoryData = Object.values(categoryCounts);
+    const palette = ['#4f46e5', '#059669', '#f59e0b', '#ef4444', '#7c3aed', '#0ea5e9', '#ec4899', '#84cc16', '#f97316', '#14b8a6'];
+
+    const categoryCtx = document.getElementById('analytics-category-chart');
+    if (analyticsCategoryChart) analyticsCategoryChart.destroy();
+    analyticsCategoryChart = new Chart(categoryCtx, {
+        type: 'bar',
+        data: {
+            labels: categoryLabels,
+            datasets: [{
+                label: 'Registrations',
+                data: categoryData,
+                backgroundColor: categoryLabels.map((_, i) => palette[i % palette.length])
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+}
