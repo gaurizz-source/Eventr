@@ -21,7 +21,9 @@ const state = {
   accessibleOwners: [],
   isSocietyOwner: false,
   rsvpMeta: {},
-  lastStatusModalData: { eventTitle: '', registrants: [] }
+  lastStatusModalData: { eventTitle: '', registrants: [] },
+  eventTotalCounts: {},
+  activeHostTab: 'active'
 };
 
 // --- INITIALIZATION RUNTIME ---
@@ -89,12 +91,14 @@ function fetchLiveOpportunities() {
             }
             renderAllOpportunities();
             window.switchHostTimeline('active'); 
+            refreshEventCounts();
         })
         .catch(err => {
             console.error("Cloud Database Fetch Error, fallback to seed:", err);
             state.opportunities = getInitialMockSeed();
             renderAllOpportunities();
             window.switchHostTimeline('active');
+            refreshEventCounts();
         });
 }
 
@@ -104,6 +108,37 @@ function getInitialMockSeed() {
         { eventId: "evt_m2", id: "evt_m2", title: "Code Craft Hackathon", society: "ACM Chapter", category: "Technical", eventDate: "2026-08-15", registrations: 12, imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800", isPaid: false },
         { eventId: "evt_m3", id: "evt_m3", title: "Taarangana Street Showdown", society: "Hypnotics Society", category: "Cultural", eventDate: "2026-07-01", registrations: 189, imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800", isPaid: false }
     ];
+}
+
+// ─── MOST-REGISTERED SORT (confirmed + waitlisted combined) ───
+function getSortCount(opp) {
+    const id = opp.eventId || opp.id;
+    return state.eventTotalCounts[id] !== undefined ? state.eventTotalCounts[id] : (Number(opp.registrations) || 0);
+}
+
+function sortByMostRegistered(list) {
+    return [...list].sort((a, b) => getSortCount(b) - getSortCount(a));
+}
+
+function refreshEventCounts() {
+    if (!state.opportunities || state.opportunities.length === 0) return;
+
+    Promise.all(
+        state.opportunities.map(opp => {
+            const eventId = opp.eventId || opp.id;
+            return fetch(`${API_BASE_URL}/rsvp/by-event?eventId=${encodeURIComponent(eventId)}`)
+                .then(res => res.json())
+                .then(data => ({ eventId, count: Array.isArray(data) ? data.length : 0 }))
+                .catch(() => ({ eventId, count: null }));
+        })
+    ).then(results => {
+        results.forEach(({ eventId, count }) => {
+            if (count !== null) state.eventTotalCounts[eventId] = count;
+        });
+        // Real counts aa gaye — ab sahi order se re-render karo
+        renderAllOpportunities();
+        window.switchHostTimeline(state.activeHostTab || 'active');
+    });
 }
 
 function fetchUserRSVPs() {
@@ -296,6 +331,11 @@ window.executeAwsRegistration = function(eventId) {
             if (regCountEl) regCountEl.innerText = targetEvent.registrations;
         }
 
+        // Local total-count cache bhi turant update kar do taaki agla sort sahi rahe
+        state.eventTotalCounts[eventId] = (state.eventTotalCounts[eventId] !== undefined
+            ? state.eventTotalCounts[eventId]
+            : (Number(targetEvent?.registrations) || 0)) + 1;
+
         if (regBtn) {
             if (isWaitlisted) {
                 regBtn.innerText = "Waitlisted";
@@ -359,6 +399,10 @@ window.handleCancelRsvp = function(eventId) {
 
         if (opp && !isWaitlisted) {
             opp.registrations = Math.max(0, (Number(opp.registrations) || 1) - 1);
+        }
+
+        if (state.eventTotalCounts[eventId] !== undefined) {
+            state.eventTotalCounts[eventId] = Math.max(0, state.eventTotalCounts[eventId] - 1);
         }
 
         renderRsvps();
@@ -538,8 +582,9 @@ function renderAllOpportunities() {
       const status = window.getEventTimelineStatus(opp.eventDate);
       return status !== 'past';
   });
+  const sortedDataset = sortByMostRegistered(dataset);
 
-  dataset.forEach(opp => {
+  sortedDataset.forEach(opp => {
     const currentId = opp.eventId || opp.id; 
     const cardImg = opp.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
     const displayDate = opp.durationText || `Starts: ${opp.eventDate || '2026'}`;
@@ -633,6 +678,8 @@ window.getEventTimelineStatus = function(eventDateString) {
 
 // ─── FIXED SOCIETY TIMELINE COMPONENT ───
 window.switchHostTimeline = function(targetTimeline) {
+    state.activeHostTab = targetTimeline;
+
     const tabButtons = document.querySelectorAll('.host-tab-nav-btn');
     tabButtons.forEach(btn => {
         btn.classList.remove('active');
@@ -667,11 +714,12 @@ window.switchHostTimeline = function(targetTimeline) {
         return eventDate >= cutoffDate;
     });
 
-    const filtered = dataset.filter(opp => {
+    const filteredUnsorted = dataset.filter(opp => {
         const targetDate = opp.eventDate || opp.date;
         const computedTimeline = window.getEventTimelineStatus(targetDate);
         return computedTimeline === targetTimeline;
     });
+    const filtered = sortByMostRegistered(filteredUnsorted);
 
     if (filtered.length === 0) {
         gridRoot.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #64748b; padding: 4rem 2rem;">No Event Found</div>`;
@@ -872,7 +920,8 @@ function renderFilteredOpportunities(dataset) {
     }
 
     let allHtml = '';
-    dataset.forEach(opp => {
+    const sortedDataset = sortByMostRegistered(dataset);
+    sortedDataset.forEach(opp => {
         const currentId = opp.eventId || opp.id;
         const cardImg = opp.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
         const displayDate = opp.durationText || `Starts: ${opp.eventDate || '2026'}`;
@@ -1229,6 +1278,7 @@ window.handleDeleteEvent = function(eventId) {
         window.showToast(message, "success");
 
         state.opportunities = state.opportunities.filter(o => (o.eventId || o.id) !== eventId);
+        delete state.eventTotalCounts[eventId];
         renderAllOpportunities();
         window.switchHostTimeline('active');
     })
