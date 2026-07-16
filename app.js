@@ -180,6 +180,7 @@ window.openEventDetails = function(eventId) {
     if (document.getElementById('detail-reg-count')) document.getElementById('detail-reg-count').innerText = opp.registrations || 0;
     if (document.getElementById('detail-duration-dates')) document.getElementById('detail-duration-dates').innerText = opp.durationText || opp.eventDate;
     renderEventSchedule(opp);
+    renderEventExtras(opp);
     
     const heroImg = document.getElementById('detail-hero-image');
     if (heroImg) {
@@ -729,6 +730,15 @@ window.handleCreateEventSubmit = function(e) {
   const endDate = document.getElementById('form-event-end-date').value;
   
   const capacity = document.getElementById('form-event-capacity').value.trim();
+  const teamSize = document.getElementById('form-event-team-size').value;
+const eligibilityRaw = document.getElementById('form-event-eligibility').value.trim();
+const whyParticipateRaw = document.getElementById('form-event-why-participate').value.trim();
+const contactName = document.getElementById('form-event-contact-name').value.trim();
+const contactEmail = document.getElementById('form-event-contact-email').value.trim();
+
+const eligibility = eligibilityRaw ? eligibilityRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+const whyParticipate = whyParticipateRaw ? whyParticipateRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+const prizes = collectPrizesFromForm();
   const requiresPayment = document.getElementById('form-event-requires-payment').checked;
   const paymentAmount = requiresPayment ? document.getElementById('form-event-amount').value : null;
   const paymentUpi = requiresPayment ? document.getElementById('form-event-upi').value : null;
@@ -756,7 +766,13 @@ const newEventObj = {
     upi: paymentUpi,
     capacity: capacity ? Number(capacity) : null,
     schedule: collectScheduleFromForm(),
-    hostEmail: state.currentUser && state.currentUser.email ? state.currentUser.email : null
+    hostEmail: state.currentUser && state.currentUser.email ? state.currentUser.email : null,
+    teamSize: teamSize || null,
+eligibility: eligibility,
+whyParticipate: whyParticipate,
+prizes: prizes,
+contactName: contactName || null,
+contactEmail: contactEmail || null,
   };
   state.opportunities.unshift(newEventObj); 
 
@@ -789,6 +805,7 @@ fetch(`${API_BASE_URL}/events`, { // Aapka event create karne ka endpoint
   document.getElementById('create-event-form').reset();
   document.getElementById('schedule-days-container').innerHTML = '';
   scheduleDayCounter = 0;
+  document.getElementById('prizes-container').innerHTML = '';
   document.getElementById('payment-details-wrap').style.display = 'none';
   window.toggleCreateEventForm(); 
 
@@ -880,14 +897,14 @@ function renderFilteredOpportunities(dataset) {
     });
     allGrid.innerHTML = allHtml;
 }
+
 function fetchSocietyAccess() {
     if (!state.currentUser) return Promise.resolve();
     return fetch(`${API_BASE_URL}/society/access?email=${encodeURIComponent(state.currentUser.email)}`)
         .then(res => res.json())
         .then(data => {
             state.accessibleOwners = data.accessibleOwners || [state.currentUser.email];
-            state.isSocietyOwner = state.accessibleOwners.length === 1 &&
-                                    state.accessibleOwners[0] === state.currentUser.email;
+            state.isSocietyOwner = true; // Har student apna event launch kar sakta hai, chahe wo kahi member bhi ho
 
             const newInvitations = data.newInvitations || [];
             newInvitations.forEach(ownerEmail => {
@@ -1498,4 +1515,91 @@ function renderEventSchedule(opp) {
     } else {
         scheduleSection.style.display = 'none';
     }
+}
+// ─── EXTRA EVENT DETAILS (team size, eligibility, why participate, prizes, contact) ───
+window.addPrizeRow = function() {
+    const container = document.getElementById('prizes-container');
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; gap:0.5rem;';
+    row.innerHTML = `
+      <input type="text" class="prize-position" placeholder="Winner" style="flex:1; padding:0.4rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.8rem;">
+      <input type="number" class="prize-amount" placeholder="20000" style="width:120px; padding:0.4rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.8rem;">
+      <button type="button" onclick="this.parentElement.remove()" style="background:#fef2f2; color:#dc2626; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem;">✕</button>
+    `;
+    container.appendChild(row);
+};
+
+function collectPrizesFromForm() {
+    const rows = document.querySelectorAll('#prizes-container > div');
+    const prizes = [];
+    rows.forEach(row => {
+        const position = row.querySelector('.prize-position').value.trim();
+        const amount = row.querySelector('.prize-amount').value.trim();
+        if (position || amount) {
+            prizes.push({ position, amount });
+        }
+    });
+    return prizes;
+}
+
+function renderEventExtras(opp) {
+    const section = document.getElementById('detail-extras-section');
+    if (!section) return;
+    let anyContent = false;
+
+    const teamSizeBadge = document.getElementById('detail-team-size-badge');
+    if (opp.teamSize) {
+        teamSizeBadge.style.display = 'inline-block';
+        teamSizeBadge.innerText = opp.teamSize;
+        anyContent = true;
+    } else {
+        teamSizeBadge.style.display = 'none';
+    }
+
+    const eligBlock = document.getElementById('detail-eligibility-block');
+    const eligList = document.getElementById('detail-eligibility-list');
+    if (opp.eligibility && opp.eligibility.length > 0) {
+        eligBlock.style.display = 'block';
+        eligList.innerHTML = opp.eligibility.map(line => `<li>${line}</li>`).join('');
+        anyContent = true;
+    } else {
+        eligBlock.style.display = 'none';
+    }
+
+    const whyBlock = document.getElementById('detail-why-participate-block');
+    const whyList = document.getElementById('detail-why-list');
+    if (opp.whyParticipate && opp.whyParticipate.length > 0) {
+        whyBlock.style.display = 'block';
+        whyList.innerHTML = opp.whyParticipate.map(line => `<li>${line}</li>`).join('');
+        anyContent = true;
+    } else {
+        whyBlock.style.display = 'none';
+    }
+
+    const prizesBlock = document.getElementById('detail-prizes-block');
+    const prizesCards = document.getElementById('detail-prizes-cards');
+    if (opp.prizes && opp.prizes.length > 0) {
+        prizesBlock.style.display = 'block';
+        prizesCards.innerHTML = opp.prizes.map(p => `
+          <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:1rem 1.5rem; text-align:center; min-width:140px;">
+            <div style="font-size:1.3rem; font-weight:800; color:#b45309;">₹${p.amount || '0'}</div>
+            <div style="font-size:0.8rem; color:#92400e; font-weight:600; margin-top:0.25rem;">${p.position || 'Prize'}</div>
+          </div>
+        `).join('');
+        anyContent = true;
+    } else {
+        prizesBlock.style.display = 'none';
+    }
+
+    const contactBlock = document.getElementById('detail-contact-block');
+    const contactInfo = document.getElementById('detail-contact-info');
+    if (opp.contactName || opp.contactEmail) {
+        contactBlock.style.display = 'block';
+        contactInfo.innerHTML = `${opp.contactName || 'Organiser'}${opp.contactEmail ? ` — <a href="mailto:${opp.contactEmail}" style="color:#4f46e5;">${opp.contactEmail}</a>` : ''}`;
+        anyContent = true;
+    } else {
+        contactBlock.style.display = 'none';
+    }
+
+    section.style.display = anyContent ? 'flex' : 'none';
 }
