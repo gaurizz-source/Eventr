@@ -125,7 +125,8 @@ function fetchUserRSVPs() {
         state.rsvpMeta[r.eventId] = {
             rsvpId: r.rsvpId,
             status: r.status || 'confirmed', // older RSVPs predate the waitlist field — treat as confirmed
-            waitlistPosition: r.waitlistPosition || null
+            waitlistPosition: r.waitlistPosition || null,
+            checkedIn: !!r.checkedIn
         };
     });
         renderRsvps();
@@ -265,11 +266,13 @@ window.executeAwsRegistration = function(eventId) {
         }
         return res.json();
     })
-    .then((result) => {
+   .then((result) => {
         const isWaitlisted = result.status === 'waitlisted';
 
         window.showToast(
-            isWaitlisted ? "Event is full — you've been added to the waitlist." : "Registration Confirmed! Slot secured.",
+            isWaitlisted
+                ? "Event is full — you've been added to the waitlist. A confirmation email has been sent (check spam folder too!)."
+                : "Registration Confirmed! Slot secured. A confirmation email has been sent (check spam folder too!).",
             isWaitlisted ? "error" : "success"
         );
 
@@ -563,31 +566,37 @@ function renderRsvps() {
   const badge = document.getElementById('rsvp-count-badge');
   if (badge) badge.innerText = state.rsvps.length;
   if (!root) return;
-
   if (state.rsvps.length === 0) {
     root.innerHTML = `<div class="rsvp-empty">No active RSVPs found.</div>`;
     return;
   }
-
   let html = '';
   state.rsvps.forEach(oppId => {
     const opp = state.opportunities.find(o => (o.eventId === oppId || o.id === oppId));
     const meta = state.rsvpMeta[oppId];
     if (opp) {
       const isWaitlisted = meta && meta.status === 'waitlisted';
-      const statusTag = isWaitlisted
-        ? `<span style="background:#fef3c7; color:#b45309; font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px; white-space:nowrap;">Waitlisted${meta.waitlistPosition ? ' #' + meta.waitlistPosition : ''}</span>`
-        : `<button onclick="window.openQrModal('${oppId}')" style="background:#eef2ff; color:#4f46e5; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">QR Code</button>`;
-
+      const isPastEvent = window.getEventTimelineStatus(opp.eventDate) === 'past';
+      const isCheckedIn = meta && meta.checkedIn;
+      let actionButtons = '';
+      if (isPastEvent && isCheckedIn) {
+        actionButtons = `<button onclick="window.handleDownloadCertificate('${oppId}')" style="background:#f0fdf4; color:#059669; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">🎓 Certificate</button>`;
+      } else if (isWaitlisted) {
+        actionButtons = `<span style="background:#fef3c7; color:#b45309; font-size:0.7rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px; white-space:nowrap;">Waitlisted${meta.waitlistPosition ? ' #' + meta.waitlistPosition : ''}</span>
+          <button onclick="window.handleCancelRsvp('${oppId}')" style="background:#fef2f2; color:#dc2626; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">Leave</button>`;
+      } else {
+        actionButtons = `<button onclick="window.openQrModal('${oppId}')" style="background:#eef2ff; color:#4f46e5; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">QR Code</button>
+          <button onclick="window.handleCancelRsvp('${oppId}')" style="background:#fef2f2; color:#dc2626; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">Cancel</button>`;
+      }
       html += `<div style="padding:0.5rem 0; font-size:0.85rem; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
         <b style="flex:1;">${opp.title}</b>
-        ${statusTag}
-        <button onclick="window.handleCancelRsvp('${oppId}')" style="background:#fef2f2; color:#dc2626; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">${isWaitlisted ? 'Leave' : 'Cancel'}</button>
+        ${actionButtons}
       </div>`;
     }
   });
   root.innerHTML = html;
 }
+
 window.toggleCreateEventForm = function() {
     const formPanel = document.getElementById('launch-event-panel');
     if (!formPanel) return;
@@ -1222,4 +1231,61 @@ window.handleEditEventSubmit = function(e) {
         console.error("Edit event failed:", err);
         window.showToast(err.message || "Failed to update event.", "error");
     });
+};
+
+window.handleDownloadCertificate = function(eventId) {
+    const opp = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
+    if (!opp || !state.currentUser) {
+        window.showToast("Unable to generate certificate. Try refreshing.", "error");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    doc.setDrawColor(79, 70, 229);
+    doc.setLineWidth(3);
+    doc.rect(30, 30, pageWidth - 60, pageHeight - 60);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(30);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Certificate of Participation", pageWidth / 2, 130, { align: "center" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(14);
+    doc.setTextColor(100, 116, 139);
+    doc.text("This certificate is proudly presented to", pageWidth / 2, 175, { align: "center" });
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(26);
+    doc.setTextColor(79, 70, 229);
+    doc.text(state.currentUser.name || "Participant", pageWidth / 2, 220, { align: "center" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(14);
+    doc.setTextColor(51, 65, 85);
+    doc.text(`for actively participating in`, pageWidth / 2, 265, { align: "center" });
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`"${opp.title}"`, pageWidth / 2, 295, { align: "center" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`hosted by ${opp.society || 'Official Chapter'} on ${opp.eventDate}`, pageWidth / 2, 320, { align: "center" });
+
+    doc.setFontSize(10);
+    doc.setTextColor(148, 163, 184);
+    doc.text("Issued via evntr — verified attendance record", pageWidth / 2, pageHeight - 60, { align: "center" });
+
+    const safeFileName = opp.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    doc.save(`${safeFileName}_certificate.pdf`);
+
+    window.showToast("Certificate downloaded!", "success");
 };
