@@ -908,7 +908,7 @@ function fetchSocietyAccess() {
 
             const newInvitations = data.newInvitations || [];
             newInvitations.forEach(ownerEmail => {
-                window.showToast(`You've been added as a member of ${ownerEmail}'s society!`, "success");
+                window.showToast(`You've been added as a member of ${societyName}!`, "success");
                 fetch(`${API_BASE_URL}/society/mark-notified`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -917,7 +917,7 @@ function fetchSocietyAccess() {
             });
             const newRemovals = data.newRemovals || [];
             newRemovals.forEach(ownerEmail => {
-                window.showToast(`You've been removed from ${ownerEmail}'s society.`, "error");
+                window.showToast(`You've been removed from ${societyName}.`, "error");
                 fetch(`${API_BASE_URL}/society/mark-removal-notified`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
