@@ -274,7 +274,7 @@ const capacityNoteEl = document.getElementById('detail-capacity-note');
 };
 
 
-window.executeAwsRegistration = function(eventId) {
+window.executeAwsRegistration = function(eventId, paymentScreenshotUrl) {
     if (!state.currentUser) {
         window.showToast("Please sign in to register for this event!", "error");
         window.switchView('auth-page');
