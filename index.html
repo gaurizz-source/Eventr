@@ -550,6 +550,28 @@
     </div>
   </div>
 
+
+  <!-- Payment Confirmation Modal -->
+<div id="payment-confirm-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); z-index:1100; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:12px; padding:1.5rem; max-width:400px; width:90%;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <h3 style="margin:0; font-size:1.05rem; color:#0f172a;">Confirm Your Payment</h3>
+      <button onclick="window.closePaymentConfirmModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:#64748b;">&times;</button>
+    </div>
+
+    <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:1rem; border-radius:8px; margin-bottom:1rem;">
+      <p style="margin:0; font-size:0.85rem; color:#166534;">Amount to pay: <b>₹<span id="payment-confirm-amount">0</span></b></p>
+      <p style="margin:0.25rem 0 0 0; font-size:0.85rem; color:#166534;">Pay to: <b id="payment-confirm-upi">N/A</b></p>
+    </div>
+
+    <label style="font-size:0.85rem; font-weight:600; color:#475569;">Payment Screenshot Link</label>
+    <p style="font-size:0.75rem; color:#94a3b8; margin:0.25rem 0 0.5rem 0;">Upload your payment screenshot to imgbb.com or imgur.com and paste the link here as proof.</p>
+    <input type="url" id="payment-confirm-screenshot-url" required placeholder="https://i.ibb.co/your-screenshot.jpg" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:1rem;">
+
+    <button type="button" onclick="window.handlePaymentConfirmSubmit()" style="width:100%; background:#4f46e5; color:white; border:none; padding:0.7rem; border-radius:6px; cursor:pointer; font-weight:600;">Submit Registration</button>
+  </div>
+</div>
+
   <!-- QR Check-in Code Modal (Student side) -->
 <div id="qr-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); z-index:1000; align-items:center; justify-content:center;">
   <div style="background:#fff; border-radius:12px; padding:1.5rem; max-width:320px; width:90%; text-align:center;">

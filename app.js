@@ -262,15 +262,14 @@ const capacityNoteEl = document.getElementById('detail-capacity-note');
             regBtn.innerText = "Join Waitlist";
             regBtn.style.background = "#f59e0b";
             regBtn.disabled = false;
-            regBtn.onclick = () => window.executeAwsRegistration(eventId);
+            regBtn.onclick = () => opp.isPaid ? window.openPaymentConfirmModal(eventId) : window.executeAwsRegistration(eventId);
         } else {
             regBtn.innerText = "Register Now";
             regBtn.style.background = "#4f46e5";
             regBtn.disabled = false;
-            regBtn.onclick = () => window.executeAwsRegistration(eventId);
+            regBtn.onclick = () => opp.isPaid ? window.openPaymentConfirmModal(eventId) : window.executeAwsRegistration(eventId);
         }
     }
-
     window.switchView('event-details');
 };
 
@@ -295,7 +294,9 @@ window.executeAwsRegistration = function(eventId) {
         body: JSON.stringify({
             eventId: eventId,
             studentName: state.currentUser.name,
-            studentEmail: state.currentUser.email
+            studentEmail: state.currentUser.email,
+            paymentScreenshotUrl: paymentScreenshotUrl || null
+        
         })
     })
     .then(async res => {
@@ -1869,4 +1870,37 @@ window.saveCertificatePositions = function() {
     const placedCount = Object.values(certificatePositionsDraft).filter(Boolean).length;
     statusEl.innerText = `✓ ${placedCount}/3 fields positioned`;
     window.closeCertificatePositioner();
+};
+
+// ─── PAID EVENT REGISTRATION FLOW ───
+let pendingPaymentEventId = null;
+
+window.openPaymentConfirmModal = function(eventId) {
+    const opp = state.opportunities.find(o => (o.eventId === eventId || o.id === eventId));
+    if (!opp) return;
+
+    pendingPaymentEventId = eventId;
+    document.getElementById('payment-confirm-amount').innerText = opp.amount || '0';
+    document.getElementById('payment-confirm-upi').innerText = opp.upi || 'N/A';
+    document.getElementById('payment-confirm-screenshot-url').value = '';
+    document.getElementById('payment-confirm-modal-overlay').style.display = 'flex';
+};
+
+window.closePaymentConfirmModal = function() {
+    document.getElementById('payment-confirm-modal-overlay').style.display = 'none';
+    pendingPaymentEventId = null;
+};
+
+window.handlePaymentConfirmSubmit = function() {
+    const screenshotUrl = document.getElementById('payment-confirm-screenshot-url').value.trim();
+    if (!screenshotUrl) {
+        window.showToast("Please paste a link to your payment screenshot.", "error");
+        return;
+    }
+    if (!pendingPaymentEventId) return;
+
+    const eventId = pendingPaymentEventId;
+    document.getElementById('payment-confirm-modal-overlay').style.display = 'none';
+    window.executeAwsRegistration(eventId, screenshotUrl);
+    pendingPaymentEventId = null;
 };
