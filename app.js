@@ -776,7 +776,7 @@ window.handleCreateEventSubmit = function(e) {
   let imageUrl = document.getElementById('form-event-image').value.trim();
   const startDate = document.getElementById('form-event-start-date').value;
   const endDate = document.getElementById('form-event-end-date').value;
-  
+  const certificateTemplateUrl = document.getElementById('form-certificate-template-url').value.trim();
   const capacity = document.getElementById('form-event-capacity').value.trim();
   const teamSize = document.getElementById('form-event-team-size').value;
 const eligibilityRaw = document.getElementById('form-event-eligibility').value.trim();
@@ -821,6 +821,8 @@ whyParticipate: whyParticipate,
 prizes: prizes,
 contactName: contactName || null,
 contactEmail: contactEmail || null,
+certificateTemplateUrl: certificateTemplateUrl || null,
+certificatePositions: certificateTemplateUrl ? certificatePositionsDraft : null,
   };
   state.opportunities.unshift(newEventObj); 
 
@@ -854,6 +856,9 @@ fetch(`${API_BASE_URL}/events`, { // Aapka event create karne ka endpoint
   document.getElementById('schedule-days-container').innerHTML = '';
   scheduleDayCounter = 0;
   document.getElementById('prizes-container').innerHTML = '';
+  document.getElementById('form-certificate-template-url').value = '';
+document.getElementById('certificate-position-status').innerText = '';
+certificatePositionsDraft = { name: null, eventTitle: null, date: null };
   document.getElementById('payment-details-wrap').style.display = 'none';
   window.toggleCreateEventForm(); 
 
@@ -1368,6 +1373,90 @@ window.handleDownloadCertificate = function(eventId) {
         return;
     }
 
+    if (opp.certificateTemplateUrl && opp.certificatePositions && opp.certificatePositions.name) {
+        generateTemplateCertificate(opp);
+    } else {
+        generateDefaultCertificate(opp);
+    }
+};
+
+function generateTemplateCertificate(opp) {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = function() {
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
+            const { jsPDF } = window.jspdf;
+            const isLandscape = img.naturalWidth >= img.naturalHeight;
+            const doc = new jsPDF({
+                orientation: isLandscape ? 'landscape' : 'portrait',
+                unit: 'pt',
+                format: 'a4'
+            });
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+
+            doc.addImage(dataUrl, 'JPEG', 0, 0, pageWidth, pageHeight);
+
+            const positions = opp.certificatePositions;
+
+            if (positions.name) {
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(24);
+                doc.setTextColor(15, 23, 42);
+                doc.text(state.currentUser.name || "Participant",
+                    (positions.name.xPercent / 100) * pageWidth,
+                    (positions.name.yPercent / 100) * pageHeight,
+                    { align: "center" });
+            }
+
+            if (positions.eventTitle) {
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(16);
+                doc.setTextColor(15, 23, 42);
+                doc.text(opp.title || "",
+                    (positions.eventTitle.xPercent / 100) * pageWidth,
+                    (positions.eventTitle.yPercent / 100) * pageHeight,
+                    { align: "center" });
+            }
+
+            if (positions.date) {
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(12);
+                doc.setTextColor(51, 65, 85);
+                doc.text(opp.eventDate || "",
+                    (positions.date.xPercent / 100) * pageWidth,
+                    (positions.date.yPercent / 100) * pageHeight,
+                    { align: "center" });
+            }
+
+            const safeFileName = opp.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            doc.save(`${safeFileName}_certificate.pdf`);
+            window.showToast("Certificate downloaded!", "success");
+        } catch (err) {
+            console.error("Template certificate generation failed:", err);
+            window.showToast("Couldn't use the custom template (likely a CORS restriction on the image host) — generating a default certificate instead.", "error");
+            generateDefaultCertificate(opp);
+        }
+    };
+
+    img.onerror = function() {
+        window.showToast("Couldn't load the certificate template — generating a default certificate instead.", "error");
+        generateDefaultCertificate(opp);
+    };
+
+    img.src = opp.certificateTemplateUrl;
+}
+
+function generateDefaultCertificate(opp) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
 
@@ -1416,7 +1505,7 @@ window.handleDownloadCertificate = function(eventId) {
     doc.save(`${safeFileName}_certificate.pdf`);
 
     window.showToast("Certificate downloaded!", "success");
-};
+}
 
 // ─── ANALYTICS DASHBOARD ───
 let analyticsTrendChart = null;
@@ -1709,3 +1798,75 @@ function renderEventExtras(opp) {
 
     section.style.display = anyContent ? 'flex' : 'none';
 }
+
+// ─── CERTIFICATE TEMPLATE POSITIONER ───
+let certificatePositionsDraft = { name: null, eventTitle: null, date: null };
+let activePositionField = 'name';
+
+window.openCertificatePositioner = function() {
+    const url = document.getElementById('form-certificate-template-url').value.trim();
+    if (!url) {
+        window.showToast("Paste a template image URL first.", "error");
+        return;
+    }
+    document.getElementById('certificate-preview-image').src = url;
+    document.getElementById('certificate-positioner-overlay').style.display = 'flex';
+    window.setActivePositionField('name');
+    renderCertMarkers();
+};
+
+window.closeCertificatePositioner = function() {
+    document.getElementById('certificate-positioner-overlay').style.display = 'none';
+};
+
+window.setActivePositionField = function(field) {
+    activePositionField = field;
+    document.querySelectorAll('.cert-field-btn').forEach(btn => {
+        btn.style.border = '2px solid transparent';
+        btn.style.background = '#f1f5f9';
+        btn.style.color = '#475569';
+    });
+    const activeBtn = document.getElementById(`field-btn-${field}`);
+    const colors = { name: ['#eef2ff', '#4f46e5'], eventTitle: ['#f0fdf4', '#059669'], date: ['#fffbeb', '#b45309'] };
+    activeBtn.style.background = colors[field][0];
+    activeBtn.style.color = colors[field][1];
+    activeBtn.style.border = `2px solid ${colors[field][1]}`;
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('certificate-preview-container');
+    if (container) {
+        container.addEventListener('click', (e) => {
+            const rect = container.getBoundingClientRect();
+            const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+            const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+            certificatePositionsDraft[activePositionField] = { xPercent, yPercent };
+            renderCertMarkers();
+        });
+    }
+});
+
+function renderCertMarkers() {
+    ['name', 'eventTitle', 'date'].forEach(field => {
+        const marker = document.getElementById(`cert-marker-${field}`);
+        const pos = certificatePositionsDraft[field];
+        if (pos) {
+            marker.style.display = 'block';
+            marker.style.left = pos.xPercent + '%';
+            marker.style.top = pos.yPercent + '%';
+        } else {
+            marker.style.display = 'none';
+        }
+    });
+}
+
+window.saveCertificatePositions = function() {
+    if (!certificatePositionsDraft.name) {
+        window.showToast("At least place the Name field before saving.", "error");
+        return;
+    }
+    const statusEl = document.getElementById('certificate-position-status');
+    const placedCount = Object.values(certificatePositionsDraft).filter(Boolean).length;
+    statusEl.innerText = `✓ ${placedCount}/3 fields positioned`;
+    window.closeCertificatePositioner();
+};
