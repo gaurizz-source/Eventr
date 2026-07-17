@@ -65,15 +65,6 @@ There is no build step for the frontend beyond `npm run dev` on port 3000 — no
 
 ---
 
-## Known Limitations (deliberate, not oversights)
-
-- **Edit Event returns a 500 error** on save. Root cause understood (likely a type mismatch between an empty-string `capacity` and `Number()`, or an `undefined` fallback DynamoDB rejects) — intentionally not fixed per product decision.
-- **SES is sandbox-restricted** (200 emails/day, verified recipients only). Moving to production requires verifying an *owned* domain — IGDTUW's institutional domain isn't available for this, and a personally-owned domain was deferred to keep the project fully free to run.
-- **Schedule and rich-details fields can only be set at event creation**, not edited afterward — deliberately not wired into the broken Edit Event flow.
-- **DynamoDB access patterns rely heavily on `Scan` + `FilterExpression`** rather than indexed queries (see Improvements below) — fine at current college-scale event volumes, but a real scaling constraint.
-
----
-
 ## Suggested Improvements
 
 ### Performance & Scale
@@ -103,9 +94,10 @@ There is no build step for the frontend beyond `npm run dev` on port 3000 — no
 
 ---
 
+## Future Prospect
 ## Should This Become a PWA?
 
-**Recommendation: yes, worth doing, low cost, low risk.**
+** yes, worth doing, low cost, low risk.**
 
 What it buys:
 - "Add to Home Screen" installability — makes the platform feel like a native app for students without any app store submission
@@ -116,4 +108,4 @@ What it does *not* solve, and shouldn't try to:
 - Registration, check-in, capacity counts, and analytics are inherently live-data operations. A PWA should **not** cache API responses aggressively — use a network-first strategy for anything hitting `/events`, `/rsvp`, `/society/*`, etc., and cache-first only for static assets. Treat offline mode as "graceful degradation," not "offline functionality."
 - QR scanning needs camera access, which requires HTTPS regardless of PWA status — if the site is already served over HTTPS (standard for most free hosting), this is unaffected either way.
 
-Implementation is two new files (`manifest.json` + a service worker script) plus a few icon assets — no new AWS services, no additional cost. Happy to build this out when you're ready.
+Implementation is two new files (`manifest.json` + a service worker script) plus a few icon assets — no new AWS services, no additional cost. 
