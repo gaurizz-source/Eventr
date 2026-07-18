@@ -586,18 +586,29 @@ function renderAllOpportunities() {
       const status = window.getEventTimelineStatus(opp.eventDate);
       return status !== 'past';
   });
-  const sortedDataset = sortByMostRegistered(dataset);
 
-  sortedDataset.forEach(opp => {
+  dataset.forEach(opp => {
     const currentId = opp.eventId || opp.id; 
     const cardImg = opp.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
     const displayDate = opp.durationText || `Starts: ${opp.eventDate || '2026'}`;
+
+    // ─── LIVE SPOTS-LEFT BADGE ───
+    const spotsLeft = opp.capacity ? (Number(opp.capacity) - (Number(opp.registrations) || 0)) : null;
+    let urgencyBadgeHtml = '';
+    if (spotsLeft !== null) {
+        if (spotsLeft <= 0) {
+            urgencyBadgeHtml = `<span style="background:#fee2e2; color:#dc2626; font-size:0.7rem; font-weight:700; padding:0.2rem 0.5rem; border-radius:4px;">Full</span>`;
+        } else if (spotsLeft <= 5) {
+            urgencyBadgeHtml = `<span style="background:#fef3c7; color:#b45309; font-size:0.7rem; font-weight:700; padding:0.2rem 0.5rem; border-radius:4px;">🔥 Only ${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left!</span>`;
+        }
+    }
     
     allHtml += `
       <div class="card" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
         <div class="card-banner" style="height: 160px; width: 100%; background: #cbd5e1; position: relative;">
          <img src="${cardImg}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'; window.showToast('Event banner failed to load — showing default image', 'error');" style="width:100%; height:100%; object-fit:cover;" alt="Banner">
           <span class="category-badge" style="position: absolute; top: 0.5rem; left: 0.5rem; background: #4f46e5; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight:700;">${opp.category || 'Event'}</span>
+          ${urgencyBadgeHtml ? `<span style="position: absolute; top: 0.5rem; right: 0.5rem;">${urgencyBadgeHtml}</span>` : ''}
         </div>
         <div class="card-body" style="padding: 1rem; flex-grow: 1; display: flex; flex-direction: column;">
           <span class="card-society" style="font-size: 0.75rem; color: #64748b; font-weight:600;">${opp.society || 'Official'}</span>
@@ -929,17 +940,28 @@ function renderFilteredOpportunities(dataset) {
     }
 
     let allHtml = '';
-    const sortedDataset = sortByMostRegistered(dataset);
-    sortedDataset.forEach(opp => {
+    dataset.forEach(opp => {
         const currentId = opp.eventId || opp.id;
         const cardImg = opp.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
         const displayDate = opp.durationText || `Starts: ${opp.eventDate || '2026'}`;
+
+        // ─── LIVE SPOTS-LEFT BADGE ───
+        const spotsLeft = opp.capacity ? (Number(opp.capacity) - (Number(opp.registrations) || 0)) : null;
+        let urgencyBadgeHtml = '';
+        if (spotsLeft !== null) {
+            if (spotsLeft <= 0) {
+                urgencyBadgeHtml = `<span style="background:#fee2e2; color:#dc2626; font-size:0.7rem; font-weight:700; padding:0.2rem 0.5rem; border-radius:4px;">Full</span>`;
+            } else if (spotsLeft <= 5) {
+                urgencyBadgeHtml = `<span style="background:#fef3c7; color:#b45309; font-size:0.7rem; font-weight:700; padding:0.2rem 0.5rem; border-radius:4px;">🔥 Only ${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left!</span>`;
+            }
+        }
 
         allHtml += `
           <div class="card" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
             <div class="card-banner" style="height: 160px; width: 100%; background: #cbd5e1; position: relative;">
               <img src="${cardImg}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800'; window.showToast('Event banner failed to load — showing default image', 'error');" style="width:100%; height:100%; object-fit:cover;" alt="Banner">
               <span class="category-badge" style="position: absolute; top: 0.5rem; left: 0.5rem; background: #4f46e5; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight:700;">${opp.category || 'Event'}</span>
+              ${urgencyBadgeHtml ? `<span style="position: absolute; top: 0.5rem; right: 0.5rem;">${urgencyBadgeHtml}</span>` : ''}
             </div>
             <div class="card-body" style="padding: 1rem; flex-grow: 1; display: flex; flex-direction: column;">
               <span class="card-society" style="font-size: 0.75rem; color: #64748b; font-weight:600;">${opp.society || 'Official'}</span>
