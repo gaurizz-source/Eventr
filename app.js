@@ -180,6 +180,7 @@ window.switchView = function(viewName) {
   if (document.getElementById('view-host-dashboard')) document.getElementById('view-host-dashboard').style.display = 'none';
   if (document.getElementById('view-auth-page')) document.getElementById('view-auth-page').style.display = 'none';
   if (document.getElementById('view-event-details')) document.getElementById('view-event-details').style.display = 'none';
+  if (document.getElementById('view-society-profile')) document.getElementById('view-society-profile').style.display = 'none';
 
   const studentBtn = document.getElementById('btn-nav-student');
   const hostBtn = document.getElementById('btn-nav-host');
@@ -218,6 +219,17 @@ window.openEventDetails = function(eventId) {
     renderEventSchedule(opp);
     renderEventExtras(opp);
     updateFollowButtonUI((opp.hostEmail || '').toLowerCase());
+
+    // 👇 naya — sirf Team Participation events pe board dikhega
+const teammatesSection = document.getElementById('teammates-board-section');
+if (teammatesSection) {
+    if (opp.teamSize === 'Team Participation') {
+        teammatesSection.style.display = 'block';
+        window.loadTeammatePosts(eventId);
+    } else {
+        teammatesSection.style.display = 'none';
+    }
+}
     
     const heroImg = document.getElementById('detail-hero-image');
     if (heroImg) {
@@ -2077,3 +2089,207 @@ function updateFollowButtonUI(ownerEmail) {
         followBtn.style.borderColor = "#4f46e5";
     }
 }
+
+// ─── SOCIETY PUBLIC PROFILE ───
+let currentProfileOwnerEmail = null;
+
+window.openSocietyProfile = function() {
+    const opp = state.opportunities.find(o => (o.eventId === state.selectedEventId || o.id === state.selectedEventId));
+    if (!opp || !opp.hostEmail) return;
+
+    const ownerEmail = opp.hostEmail.toLowerCase();
+    currentProfileOwnerEmail = ownerEmail;
+
+    document.getElementById('society-profile-name').innerText = opp.society || 'Society';
+
+    // This host's full event list (upcoming + past), not just what's currently loaded/filtered
+    const hostEvents = state.opportunities.filter(o => (o.hostEmail || '').toLowerCase() === ownerEmail);
+    const upcoming = hostEvents.filter(o => window.getEventTimelineStatus(o.eventDate) !== 'past');
+    const past = hostEvents.filter(o => window.getEventTimelineStatus(o.eventDate) === 'past');
+
+    document.getElementById('society-profile-event-count').innerText = hostEvents.length;
+
+    renderSocietyProfileGrid('society-profile-upcoming-root', upcoming, 'No upcoming events right now.');
+    renderSocietyProfileGrid('society-profile-past-root', past, 'No past events yet.');
+
+    updateProfileFollowButtonUI(ownerEmail);
+
+    fetch(`${API_BASE_URL}/society/follower-count?ownerEmail=${encodeURIComponent(ownerEmail)}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('society-profile-follower-count').innerText = data.followerCount || 0;
+        })
+        .catch(() => {
+            document.getElementById('society-profile-follower-count').innerText = '—';
+        });
+
+    window.switchView('society-profile');
+};
+
+function renderSocietyProfileGrid(containerId, events, emptyMessage) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (events.length === 0) {
+        container.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color:#94a3b8; padding:2rem;">${emptyMessage}</div>`;
+        return;
+    }
+
+    container.innerHTML = events.map(opp => {
+        const currentId = opp.eventId || opp.id;
+        const cardImg = opp.imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+        const displayDate = opp.durationText || `Starts: ${opp.eventDate || '2026'}`;
+        return `
+          <div class="card" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+            <div class="card-banner" style="height: 140px; width: 100%; background: #cbd5e1; position: relative;">
+              <img src="${cardImg}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';" style="width:100%; height:100%; object-fit:cover;" alt="Banner">
+              <span class="category-badge" style="position: absolute; top: 0.5rem; left: 0.5rem; background: #4f46e5; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight:700;">${opp.category || 'Event'}</span>
+            </div>
+            <div class="card-body" style="padding: 1rem; flex-grow: 1; display: flex; flex-direction: column;">
+              <h3 style="font-size: 1rem; font-weight: 700; margin: 0 0 0.5rem 0; color: #0f172a;">${opp.title}</h3>
+              <p style="font-size:0.8rem; color: #475569; margin:0 0 1rem 0;">📅 ${displayDate}</p>
+              <button onclick="window.openEventDetails('${currentId}')" style="margin-top:auto; background:#4f46e5; color:white; border:none; padding:0.4rem 0.8rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">View details</button>
+            </div>
+          </div>
+        `;
+    }).join('');
+}
+
+window.toggleFollowFromProfile = function() {
+    if (!state.currentUser) {
+        window.showToast("Please sign in to follow a society!", "error");
+        return;
+    }
+    if (!currentProfileOwnerEmail) return;
+
+    const isFollowing = state.followedOwners.includes(currentProfileOwnerEmail);
+    const endpoint = isFollowing ? '/society/unfollow' : '/society/follow';
+
+    fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerEmail: currentProfileOwnerEmail, followerEmail: state.currentUser.email })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Failed to update follow status");
+        return res.json();
+    })
+    .then(() => {
+        if (isFollowing) {
+            state.followedOwners = state.followedOwners.filter(o => o !== currentProfileOwnerEmail);
+            window.showToast("Unfollowed.", "success");
+        } else {
+            state.followedOwners.push(currentProfileOwnerEmail);
+            window.showToast("Now following!", "success");
+        }
+        updateProfileFollowButtonUI(currentProfileOwnerEmail);
+        updateFollowButtonUI(currentProfileOwnerEmail); // event-details wala button bhi sync ho jaye
+    })
+    .catch(() => window.showToast("Failed to update follow status.", "error"));
+};
+
+function updateProfileFollowButtonUI(ownerEmail) {
+    const btn = document.getElementById('society-profile-follow-btn');
+    if (!btn) return;
+    const isFollowing = state.followedOwners.includes(ownerEmail);
+    if (isFollowing) {
+        btn.innerText = "✓ Following";
+        btn.style.background = "#f0fdf4";
+        btn.style.color = "#059669";
+        btn.style.borderColor = "#059669";
+    } else {
+        btn.innerText = "+ Follow";
+        btn.style.background = "#eef2ff";
+        btn.style.color = "#4f46e5";
+        btn.style.borderColor = "#4f46e5";
+    }
+}
+
+// ─── FIND TEAMMATES BOARD ───
+window.loadTeammatePosts = function(eventId) {
+    const listEl = document.getElementById('teammates-posts-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = `<div style="color:#94a3b8; font-size:0.8rem;">Loading...</div>`;
+
+    fetch(`${API_BASE_URL}/teammate-posts?eventId=${encodeURIComponent(eventId)}`)
+        .then(res => res.json())
+        .then(posts => {
+            if (!posts || posts.length === 0) {
+                listEl.innerHTML = `<div style="color:#94a3b8; font-size:0.85rem; text-align:center; padding:1rem;">No one's posted yet — be the first to look for teammates!</div>`;
+                return;
+            }
+            listEl.innerHTML = posts.map(p => {
+                const isOwn = state.currentUser && state.currentUser.email.toLowerCase() === (p.studentEmail || '').toLowerCase();
+                return `
+                  <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:0.85rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                      <b style="font-size:0.85rem; color:#0f172a;">${p.studentName}</b>
+                      ${isOwn ? `<button onclick="window.handleDeleteTeammatePost('${eventId}', '${p.postId}')" style="background:none; border:none; color:#dc2626; cursor:pointer; font-size:0.7rem; font-weight:600;">Delete</button>` : ''}
+                    </div>
+                    <p style="font-size:0.85rem; color:#475569; margin:0.35rem 0 0 0;">${p.message}</p>
+                  </div>
+                `;
+            }).join('');
+        })
+        .catch(() => {
+            listEl.innerHTML = `<div style="color:#ef4444; font-size:0.85rem;">Failed to load posts.</div>`;
+        });
+};
+
+window.handlePostTeammateRequest = function() {
+    if (!state.currentUser) {
+        window.showToast("Please sign in to post!", "error");
+        return;
+    }
+
+    const message = document.getElementById('teammate-post-message').value.trim();
+    if (!message) {
+        window.showToast("Write a short message first.", "error");
+        return;
+    }
+
+    const eventId = state.selectedEventId;
+
+    fetch(`${API_BASE_URL}/teammate-posts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            eventId,
+            studentName: state.currentUser.name,
+            studentEmail: state.currentUser.email,
+            message
+        })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Failed to post");
+        return res.json();
+    })
+    .then(() => {
+        document.getElementById('teammate-post-message').value = '';
+        window.showToast("Posted!", "success");
+        window.loadTeammatePosts(eventId);
+    })
+    .catch(() => window.showToast("Failed to post. Try again.", "error"));
+};
+
+window.handleDeleteTeammatePost = function(eventId, postId) {
+    if (!state.currentUser) return;
+    const confirmed = confirm("Delete this post?");
+    if (!confirmed) return;
+
+    fetch(`${API_BASE_URL}/teammate-posts/remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, postId, studentEmail: state.currentUser.email })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Failed to delete");
+        return res.json();
+    })
+    .then(() => {
+        window.showToast("Post deleted.", "success");
+        window.loadTeammatePosts(eventId);
+    })
+    .catch(() => window.showToast("Failed to delete post.", "error"));
+};
