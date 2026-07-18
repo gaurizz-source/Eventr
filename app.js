@@ -70,6 +70,7 @@ function checkPersistentSession() {
                 fetchSocietyAccess().then(() => {
                     updateHostPermissions();
                     fetchUserRSVPs();
+                    fetchFollowedSocieties(); 
                 });
             });
         });
@@ -216,6 +217,7 @@ window.openEventDetails = function(eventId) {
     if (document.getElementById('detail-duration-dates')) document.getElementById('detail-duration-dates').innerText = opp.durationText || opp.eventDate;
     renderEventSchedule(opp);
     renderEventExtras(opp);
+    updateFollowButtonUI((opp.hostEmail || '').toLowerCase());
     
     const heroImg = document.getElementById('detail-hero-image');
     if (heroImg) {
@@ -522,6 +524,7 @@ window.handleAuthWorkflowSubmit = function(e) {
                     fetchSocietyAccess().then(() => {
                         updateHostPermissions();
                         fetchUserRSVPs();
+                        fetchFollowedSocieties();
                         window.switchView('student-dashboard');
                     });
                 });
@@ -1997,3 +2000,80 @@ window.handleConfirmResetPassword = function() {
         }
     });
 };
+
+// ─── FOLLOW A SOCIETY ───
+state.followedOwners = [];
+
+function fetchFollowedSocieties() {
+    if (!state.currentUser) return Promise.resolve();
+    return fetch(`${API_BASE_URL}/society/following?email=${encodeURIComponent(state.currentUser.email)}`)
+        .then(res => res.json())
+        .then(data => {
+            state.followedOwners = data.followedOwners || [];
+
+            const notifications = data.notifications || [];
+            notifications.forEach(notif => {
+                window.showToast(`${notif.societyName} posted ${notif.count} new event${notif.count > 1 ? 's' : ''}!`, "success");
+                fetch(`${API_BASE_URL}/society/mark-follow-checked`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ownerEmail: notif.ownerEmail, followerEmail: state.currentUser.email })
+                }).catch(err => console.error("Failed to mark follow checked:", err));
+            });
+        })
+        .catch(err => console.error("Failed to fetch followed societies:", err));
+}
+
+window.toggleFollowSociety = function() {
+    if (!state.currentUser) {
+        window.showToast("Please sign in to follow a society!", "error");
+        return;
+    }
+
+    const opp = state.opportunities.find(o => (o.eventId === state.selectedEventId || o.id === state.selectedEventId));
+    if (!opp || !opp.hostEmail) return;
+
+    const ownerEmail = opp.hostEmail.toLowerCase();
+    const isFollowing = state.followedOwners.includes(ownerEmail);
+    const followBtn = document.getElementById('detail-follow-btn');
+
+    const endpoint = isFollowing ? '/society/unfollow' : '/society/follow';
+
+    fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerEmail, followerEmail: state.currentUser.email })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Failed to update follow status");
+        return res.json();
+    })
+    .then(() => {
+        if (isFollowing) {
+            state.followedOwners = state.followedOwners.filter(o => o !== ownerEmail);
+            window.showToast("Unfollowed.", "success");
+        } else {
+            state.followedOwners.push(ownerEmail);
+            window.showToast(`Now following ${opp.society}!`, "success");
+        }
+        updateFollowButtonUI(ownerEmail);
+    })
+    .catch(() => window.showToast("Failed to update follow status.", "error"));
+};
+
+function updateFollowButtonUI(ownerEmail) {
+    const followBtn = document.getElementById('detail-follow-btn');
+    if (!followBtn) return;
+    const isFollowing = state.followedOwners.includes(ownerEmail);
+    if (isFollowing) {
+        followBtn.innerText = "✓ Following";
+        followBtn.style.background = "#f0fdf4";
+        followBtn.style.color = "#059669";
+        followBtn.style.borderColor = "#059669";
+    } else {
+        followBtn.innerText = "+ Follow";
+        followBtn.style.background = "#eef2ff";
+        followBtn.style.color = "#4f46e5";
+        followBtn.style.borderColor = "#4f46e5";
+    }
+}
