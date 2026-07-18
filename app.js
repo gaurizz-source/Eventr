@@ -217,6 +217,10 @@ window.openEventDetails = function(eventId) {
     if (document.getElementById('detail-reg-count')) document.getElementById('detail-reg-count').innerText = opp.registrations || 0;
     if (document.getElementById('detail-duration-dates')) document.getElementById('detail-duration-dates').innerText = opp.durationText || opp.eventDate;
     renderEventSchedule(opp);
+    const teamNameWrap = document.getElementById('detail-team-name-wrap');
+if (teamNameWrap) {
+    teamNameWrap.style.display = (opp.teamSize === 'Team Participation') ? 'block' : 'none';
+}
     renderEventExtras(opp);
     updateFollowButtonUI((opp.hostEmail || '').toLowerCase());
 
@@ -289,6 +293,8 @@ const capacityNoteEl = document.getElementById('detail-capacity-note');
 
 
 window.executeAwsRegistration = function(eventId, paymentScreenshotUrl) {
+    const teamNameInput = document.getElementById('detail-team-name-input');
+    const teamName = teamNameInput ? teamNameInput.value.trim() : '';
     if (!state.currentUser) {
         window.showToast("Please sign in to register for this event!", "error");
         window.switchView('auth-page');
@@ -309,7 +315,8 @@ window.executeAwsRegistration = function(eventId, paymentScreenshotUrl) {
             eventId: eventId,
             studentName: state.currentUser.name,
             studentEmail: state.currentUser.email,
-            paymentScreenshotUrl: paymentScreenshotUrl || null
+            paymentScreenshotUrl: paymentScreenshotUrl || null,
+            teamName: teamName || null
         
         })
     })
@@ -1086,7 +1093,8 @@ window.openStatusModal = function(eventId) {
                 <div style="padding:0.6rem; background:#f8fafc; border-radius:6px; font-size:0.85rem; display:flex; justify-content:space-between; align-items:center;">
                   <div>
                     <div style="font-weight:600; color:#0f172a;">${r.studentName}</div>
-                    <div style="color:#64748b; font-size:0.75rem;">${r.studentEmail}</div>
+<div style="color:#64748b; font-size:0.75rem;">${r.studentEmail}</div>
+${r.teamName ? `<div style="color:#4f46e5; font-size:0.7rem; font-weight:600; margin-top:0.15rem;">👥 Team: ${r.teamName}</div>` : ''} 
                     ${r.paymentScreenshotUrl ? `<a href="${r.paymentScreenshotUrl}" target="_blank" style="color:#4f46e5; font-size:0.75rem;">View payment proof</a>` : ''}
                   </div>
                   <span style="font-size:0.7rem; font-weight:700; padding:0.2rem 0.5rem; border-radius:4px; ${r.checkedIn ? 'background:#dcfce7;color:#166534;' : 'background:#f1f5f9;color:#94a3b8;'}">${r.checkedIn ? '✓ Checked In' : 'Not yet'}</span>
