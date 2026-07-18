@@ -429,8 +429,10 @@ window.toggleAuthForm = function(formType) {
   const submitBtn = document.getElementById('auth-submit-btn');
   const nameInput = document.getElementById('auth-stud-name');
   const yearInput = document.getElementById('auth-stud-year');
+  const forgotLink = document.getElementById('forgot-password-link');
 
   if (formType === 'register') {
+    if (forgotLink) forgotLink.style.display = 'none';
     if (tabLogin) tabLogin.classList.remove('active');
     if (tabRegister) tabRegister.classList.add('active');
     if (registerFields) registerFields.style.display = 'block';
@@ -438,6 +440,7 @@ window.toggleAuthForm = function(formType) {
     if (nameInput) nameInput.required = true;
     if (yearInput) yearInput.required = true;
   } else {
+    if (forgotLink) forgotLink.style.display = 'inline';
     if (tabRegister) tabRegister.classList.remove('active');
     if (tabLogin) tabLogin.classList.add('active');
     if (registerFields) registerFields.style.display = 'none';
@@ -1903,4 +1906,72 @@ window.handlePaymentConfirmSubmit = function() {
     document.getElementById('payment-confirm-modal-overlay').style.display = 'none';
     window.executeAwsRegistration(eventId, screenshotUrl);
     pendingPaymentEventId = null;
+};
+
+// ─── FORGOT PASSWORD FLOW ───
+let forgotPasswordCognitoUser = null;
+
+window.openForgotPasswordModal = function() {
+    document.getElementById('forgot-password-modal-overlay').style.display = 'flex';
+    document.getElementById('forgot-password-step-1').style.display = 'block';
+    document.getElementById('forgot-password-step-2').style.display = 'none';
+    document.getElementById('forgot-password-email').value = '';
+    document.getElementById('forgot-password-code').value = '';
+    document.getElementById('forgot-password-new-password').value = '';
+};
+
+window.closeForgotPasswordModal = function() {
+    document.getElementById('forgot-password-modal-overlay').style.display = 'none';
+    forgotPasswordCognitoUser = null;
+};
+
+window.handleSendResetCode = function() {
+    const email = document.getElementById('forgot-password-email').value.trim();
+    if (!email) {
+        window.showToast("Please enter your email.", "error");
+        return;
+    }
+
+    forgotPasswordCognitoUser = new CognitoUser({ Username: email, Pool: userPool });
+
+    forgotPasswordCognitoUser.forgotPassword({
+        onSuccess: () => {
+            // Not typically called for this flow — code delivery triggers inputRequiredForCode instead
+        },
+        inputVerificationCode: () => {
+            window.showToast("Verification code sent to your email!", "success");
+            document.getElementById('forgot-password-step-1').style.display = 'none';
+            document.getElementById('forgot-password-step-2').style.display = 'block';
+        },
+        onFailure: (err) => {
+            window.showToast(err.message || "Failed to send reset code. Check the email and try again.", "error");
+        }
+    });
+};
+
+window.handleConfirmResetPassword = function() {
+    const code = document.getElementById('forgot-password-code').value.trim();
+    const newPassword = document.getElementById('forgot-password-new-password').value;
+
+    if (!code || !newPassword) {
+        window.showToast("Please enter both the code and a new password.", "error");
+        return;
+    }
+
+    if (!forgotPasswordCognitoUser) {
+        window.showToast("Something went wrong — please start over.", "error");
+        window.openForgotPasswordModal();
+        return;
+    }
+
+    forgotPasswordCognitoUser.confirmPassword(code, newPassword, {
+        onSuccess: () => {
+            window.showToast("Password reset successfully! Please sign in.", "success");
+            window.closeForgotPasswordModal();
+            window.toggleAuthForm('login');
+        },
+        onFailure: (err) => {
+            window.showToast(err.message || "Failed to reset password. Check the code and try again.", "error");
+        }
+    });
 };
