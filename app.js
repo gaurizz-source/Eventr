@@ -2101,14 +2101,19 @@ function updateFollowButtonUI(ownerEmail) {
 // ─── SOCIETY PUBLIC PROFILE ───
 let currentProfileOwnerEmail = null;
 
-window.openSocietyProfile = function() {
-    const opp = state.opportunities.find(o => (o.eventId === state.selectedEventId || o.id === state.selectedEventId));
-    if (!opp || !opp.hostEmail) return;
+window.openSocietyProfile = function(ownerEmailParam) {
+    let ownerEmail = ownerEmailParam;
 
-    const ownerEmail = opp.hostEmail.toLowerCase();
+    if (!ownerEmail) {
+        const opp = state.opportunities.find(o => (o.eventId === state.selectedEventId || o.id === state.selectedEventId));
+        if (!opp || !opp.hostEmail) return;
+        ownerEmail = opp.hostEmail.toLowerCase();
+    }
+
     currentProfileOwnerEmail = ownerEmail;
 
-    document.getElementById('society-profile-name').innerText = opp.society || 'Society';
+    const hostEventForName = state.opportunities.find(o => (o.hostEmail || '').toLowerCase() === ownerEmail);
+    document.getElementById('society-profile-name').innerText = (hostEventForName && hostEventForName.society) || 'Society';
 
     // This host's full event list (upcoming + past), not just what's currently loaded/filtered
     const hostEvents = state.opportunities.filter(o => (o.hostEmail || '').toLowerCase() === ownerEmail);
@@ -2229,13 +2234,18 @@ window.loadTeammatePosts = function(eventId) {
             }
             listEl.innerHTML = posts.map(p => {
                 const isOwn = state.currentUser && state.currentUser.email.toLowerCase() === (p.studentEmail || '').toLowerCase();
+                const timeAgo = formatTimeAgo(p.postedAt);
                 return `
                   <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:0.85rem;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                      <b style="font-size:0.85rem; color:#0f172a;">${p.studentName}</b>
+                      <div>
+                        <b style="font-size:0.85rem; color:#0f172a;">${p.studentName}</b>
+                        <span style="font-size:0.7rem; color:#94a3b8; margin-left:0.4rem;">${timeAgo}</span>
+                      </div>
                       ${isOwn ? `<button onclick="window.handleDeleteTeammatePost('${eventId}', '${p.postId}')" style="background:none; border:none; color:#dc2626; cursor:pointer; font-size:0.7rem; font-weight:600;">Delete</button>` : ''}
                     </div>
-                    <p style="font-size:0.85rem; color:#475569; margin:0.35rem 0 0 0;">${p.message}</p>
+                    <p style="font-size:0.85rem; color:#475569; margin:0.35rem 0 0.5rem 0;">${p.message}</p>
+                    ${!isOwn ? `<a href="mailto:${p.studentEmail}?subject=Re: Teammates for your event post" style="font-size:0.75rem; color:#4f46e5; font-weight:600; text-decoration:none;">✉️ Contact ${p.studentName.split(' ')[0]}</a>` : ''}
                   </div>
                 `;
             }).join('');
@@ -2244,6 +2254,7 @@ window.loadTeammatePosts = function(eventId) {
             listEl.innerHTML = `<div style="color:#ef4444; font-size:0.85rem;">Failed to load posts.</div>`;
         });
 };
+
 
 window.handlePostTeammateRequest = function() {
     if (!state.currentUser) {
@@ -2300,4 +2311,71 @@ window.handleDeleteTeammatePost = function(eventId, postId) {
         window.loadTeammatePosts(eventId);
     })
     .catch(() => window.showToast("Failed to delete post.", "error"));
+};
+
+function formatTimeAgo(isoString) {
+    if (!isoString) return '';
+    const diffMs = Date.now() - new Date(isoString).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+}
+
+// ─── FOLLOWING LIST ───
+window.openFollowingModal = function() {
+    if (!state.currentUser) {
+        window.showToast("Please sign in to view your followed societies.", "error");
+        return;
+    }
+
+    const overlay = document.getElementById('following-modal-overlay');
+    const container = document.getElementById('following-list-container');
+    if (!overlay || !container) return;
+
+    overlay.style.display = 'flex';
+
+    if (!state.followedOwners || state.followedOwners.length === 0) {
+        container.innerHTML = `<div style="color:#94a3b8; font-size:0.85rem; text-align:center; padding:1rem;">You're not following any societies yet.</div>`;
+        return;
+    }
+
+    container.innerHTML = state.followedOwners.map(ownerEmail => {
+        const hostEvent = state.opportunities.find(o => (o.hostEmail || '').toLowerCase() === ownerEmail);
+        const societyName = hostEvent ? (hostEvent.society || 'Unknown Society') : 'Unknown Society';
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:0.6rem 0.85rem; border-radius:8px;">
+            <span style="font-size:0.85rem; color:#0f172a; font-weight:600;">${societyName}</span>
+            <div style="display:flex; gap:0.4rem;">
+              <button onclick="window.closeFollowingModal(); window.openSocietyProfile('${ownerEmail}')" style="background:#eef2ff; color:#4f46e5; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.7rem; font-weight:600;">View</button>
+              <button onclick="window.unfollowFromList('${ownerEmail}')" style="background:#fef2f2; color:#dc2626; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.7rem; font-weight:600;">Unfollow</button>
+            </div>
+          </div>
+        `;
+    }).join('');
+};
+
+window.closeFollowingModal = function() {
+    document.getElementById('following-modal-overlay').style.display = 'none';
+};
+
+window.unfollowFromList = function(ownerEmail) {
+    fetch(`${API_BASE_URL}/society/unfollow`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerEmail, followerEmail: state.currentUser.email })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Failed to unfollow");
+        return res.json();
+    })
+    .then(() => {
+        state.followedOwners = state.followedOwners.filter(o => o !== ownerEmail);
+        window.showToast("Unfollowed.", "success");
+        window.openFollowingModal(); // refresh list
+    })
+    .catch(() => window.showToast("Failed to unfollow.", "error"));
 };

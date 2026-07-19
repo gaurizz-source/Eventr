@@ -102,10 +102,13 @@
         </div>
 
         <aside class="student-rsvp-sidebar">
-          <div class="rsvp-header">
-            <h3 class="rsvp-title">Your RSVPs</h3>
-            <span class="rsvp-badge" id="rsvp-count-badge">0</span>
-          </div>
+          <div class="rsvp-header" style="display:flex; justify-content:space-between; align-items:center;">
+  <div style="display:flex; align-items:center; gap:0.5rem;">
+    <h3 class="rsvp-title" style="margin:0;">Your RSVPs</h3>
+    <span class="rsvp-badge" id="rsvp-count-badge">0</span>
+  </div>
+  <button onclick="window.openFollowingModal()" style="background:#f0fdf4; color:#059669; border:none; padding:0.3rem 0.6rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">❤️ Following</button>
+</div>
           <div class="rsvp-list" id="rsvp-list-root">
             <div class="rsvp-empty">You haven't RSVP'd to any running events yet. Your registered panels will appear here.</div>
           </div>
@@ -243,6 +246,17 @@
       <label style="font-size: 0.85rem; font-weight: 600; color: #475569;">Contact Organiser Email (optional)</label>
       <input type="email" id="form-event-contact-email" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; margin-top:0.25rem;">
     </div>
+  </div>
+</div>
+
+<!-- Following List Modal -->
+<div id="following-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:12px; padding:1.5rem; max-width:420px; width:90%; max-height:80vh; overflow-y:auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <h3 style="margin:0; font-size:1.1rem; color:#0f172a;">Societies You Follow</h3>
+      <button onclick="window.closeFollowingModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:#64748b;">&times;</button>
+    </div>
+    <div id="following-list-container" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
   </div>
 </div>
 
