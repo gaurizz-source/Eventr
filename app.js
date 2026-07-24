@@ -221,6 +221,8 @@ window.openEventDetails = function(eventId) {
 
     if (document.getElementById('detail-title')) document.getElementById('detail-title').innerText = opp.title;
     if (document.getElementById('detail-society')) document.getElementById('detail-society').innerText = `Hosted by ${opp.society || 'Official Chapter'}`;
+    const verifiedBadgeDetail = document.getElementById('detail-verified-badge');
+    if (verifiedBadgeDetail) verifiedBadgeDetail.style.display = opp.verified ? 'inline-block' : 'none';
     if (document.getElementById('detail-category-badge')) document.getElementById('detail-category-badge').innerText = opp.category || 'General';
     if (document.getElementById('detail-reg-count')) document.getElementById('detail-reg-count').innerText = opp.registrations || 0;
     if (document.getElementById('detail-duration-dates')) document.getElementById('detail-duration-dates').innerText = opp.durationText || opp.eventDate;
@@ -655,7 +657,7 @@ function renderAllOpportunities() {
           ${urgencyBadgeHtml ? `<span style="position: absolute; top: 0.5rem; right: 0.5rem;">${urgencyBadgeHtml}</span>` : ''}
         </div>
         <div class="card-body" style="padding: 1rem; flex-grow: 1; display: flex; flex-direction: column;">
-          <span class="card-society" style="font-size: 0.75rem; color: #64748b; font-weight:600;">${opp.society || 'Official'}</span>
+          <span class="card-society" style="font-size: 0.75rem; color: #64748b; font-weight:600;">${opp.society || 'Official'}${opp.verified ? ' <span style="background:#dbeafe; color:#1e40af; font-size:0.65rem; font-weight:700; padding:0.1rem 0.4rem; border-radius:4px; margin-left:0.3rem;">✓ Verified</span>' : ''}</span>
           <h3 class="card-title" style="font-size: 1.1rem; font-weight: 700; margin: 0.25rem 0; color: #0f172a;">${opp.title}</h3>
           <p style="font-size:0.8rem; color: #475569; margin:0.5rem 0 1rem 0;">📅 ${displayDate}</p>
           <div class="card-footer" style="margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; border-top: 1px solid #f1f5f9;">
@@ -1008,7 +1010,7 @@ function renderFilteredOpportunities(dataset) {
               ${urgencyBadgeHtml ? `<span style="position: absolute; top: 0.5rem; right: 0.5rem;">${urgencyBadgeHtml}</span>` : ''}
             </div>
             <div class="card-body" style="padding: 1rem; flex-grow: 1; display: flex; flex-direction: column;">
-              <span class="card-society" style="font-size: 0.75rem; color: #64748b; font-weight:600;">${opp.society || 'Official'}</span>
+              <span class="card-society" style="font-size: 0.75rem; color: #64748b; font-weight:600;">${opp.society || 'Official'}${opp.verified ? ' <span style="background:#dbeafe; color:#1e40af; font-size:0.65rem; font-weight:700; padding:0.1rem 0.4rem; border-radius:4px; margin-left:0.3rem;">✓ Verified</span>' : ''}</span>
               <h3 class="card-title" style="font-size: 1.1rem; font-weight: 700; margin: 0.25rem 0; color: #0f172a;">${opp.title}</h3>
               <p style="font-size:0.8rem; color: #475569; margin:0.5rem 0 1rem 0;">📅 ${displayDate}</p>
               <div class="card-footer" style="margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; border-top: 1px solid #f1f5f9;">
@@ -2184,7 +2186,7 @@ function renderSocietyProfileGrid(containerId, events, emptyMessage) {
               <span class="category-badge" style="position: absolute; top: 0.5rem; left: 0.5rem; background: #4f46e5; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight:700;">${opp.category || 'Event'}</span>
             </div>
             <div class="card-body" style="padding: 1rem; flex-grow: 1; display: flex; flex-direction: column;">
-              <h3 style="font-size: 1rem; font-weight: 700; margin: 0 0 0.5rem 0; color: #0f172a;">${opp.title}</h3>
+             ${opp.verified ? `<span style="background:#dbeafe; color:#1e40af; font-size:0.65rem; font-weight:700; padding:0.15rem 0.4rem; border-radius:4px; width:fit-content; margin-bottom:0.3rem;">✓ Verified</span>` : ''}
               <p style="font-size:0.8rem; color: #475569; margin:0 0 1rem 0;">📅 ${displayDate}</p>
               <button onclick="window.openEventDetails('${currentId}')" style="margin-top:auto; background:#4f46e5; color:white; border:none; padding:0.4rem 0.8rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">View details</button>
             </div>
