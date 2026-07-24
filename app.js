@@ -227,6 +227,7 @@ window.openEventDetails = function(eventId) {
     if (document.getElementById('detail-reg-count')) document.getElementById('detail-reg-count').innerText = opp.registrations || 0;
     if (document.getElementById('detail-duration-dates')) document.getElementById('detail-duration-dates').innerText = opp.durationText || opp.eventDate;
     renderEventSchedule(opp);
+    applyEventDetailsMobileLayout(); 
     const teamNameWrap = document.getElementById('detail-team-name-wrap');
 if (teamNameWrap) {
     teamNameWrap.style.display = (opp.teamSize === 'Team Participation') ? 'block' : 'none';
@@ -804,19 +805,19 @@ let cardsHtml = '';
             <div style="margin-top:auto; padding-top:0.75rem; border-top:1px solid #f1f5f9; display:flex; flex-direction:column; gap:0.5rem;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:0.8rem; color:#4f46e5; font-weight:700;">${opp.registrations || 0} Applied</span>
-               ${isOwner
-                  ? `<div style="display:flex; gap:0.5rem;">
-                       <button onclick="window.openEditEventModal('${currentId}')" style="background:#eff6ff; color:#2563eb; border:none; padding:0.35rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">Edit</button>
-                       <button onclick="window.handleDeleteEvent && window.handleDeleteEvent('${currentId}')" style="background:#ef4444; color:white; border:none; padding:0.35rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">Delete</button>
+              ${isOwner
+                  ? `<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                       <button onclick="window.openEditEventModal('${currentId}')" style="background:#eff6ff; color:#2563eb; border:none; padding:0.35rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600; flex:${isMobile() ? '1 1 auto' : '0 0 auto'};">Edit</button>
+                       <button onclick="window.handleDeleteEvent && window.handleDeleteEvent('${currentId}')" style="background:#ef4444; color:white; border:none; padding:0.35rem 0.75rem; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600; flex:${isMobile() ? '1 1 auto' : '0 0 auto'};">Delete</button>
                      </div>`
                   : ``
                 }
               </div>
-              <div style="display:flex; gap:0.5rem;">
-                <button onclick="window.openStatusModal('${currentId}')" style="flex:1; background:#eef2ff; color:#4f46e5; border:none; padding:0.4rem 0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">View Status</button>
-                <button onclick="window.openScannerModal('${currentId}')" style="flex:1; background:#fef3c7; color:#b45309; border:none; padding:0.4rem 0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">📷 Scan Check-in</button>
+              <div style="display:flex; gap:0.5rem; flex-direction:${isMobile() ? 'column' : 'row'};">
+                <button onclick="window.openStatusModal('${currentId}')" style="flex:1; background:#eef2ff; color:#4f46e5; border:none; padding:0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">View Status</button>
+                <button onclick="window.openScannerModal('${currentId}')" style="flex:1; background:#fef3c7; color:#b45309; border:none; padding:0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">📷 Scan Check-in</button>
                 ${isOwner && !isPastEvent
-                  ? `<button onclick="window.openAddMemberModal()" style="flex:1; background:#f0fdf4; color:#059669; border:none; padding:0.4rem 0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">+ Add Member</button>`
+                  ? `<button onclick="window.openAddMemberModal()" style="flex:1; background:#f0fdf4; color:#059669; border:none; padding:0.5rem; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600;">+ Add Member</button>`
                   : ``
                 }
               </div>
@@ -2496,5 +2497,52 @@ function stopNotificationPolling() {
     if (notificationPollInterval) {
         clearInterval(notificationPollInterval);
         notificationPollInterval = null;
+    }
+}
+
+// ─── MOBILE RESPONSIVENESS HELPER ───
+function isMobile() {
+    return window.innerWidth <= 640;
+}
+
+// Jab bhi screen size badle, affected dynamic sections ko dobara render karo
+window.addEventListener('resize', () => {
+    if (state.selectedEventId && state.activeView === 'event-details') {
+        applyEventDetailsMobileLayout();
+    }
+    if (state.activeView === 'host-dashboard') {
+        const activeTab = document.querySelector('.host-tab-nav-btn.active');
+        if (activeTab) {
+            const timeline = activeTab.id.replace('tab-btn-', '');
+            window.switchHostTimeline(timeline);
+        }
+    }
+});
+
+function applyEventDetailsMobileLayout() {
+    const box = document.getElementById('detail-timeline-info-box');
+    if (!box) return;
+
+    if (isMobile()) {
+        box.style.flexDirection = 'column';
+        box.style.gap = '1rem';
+        // Second child (Total Applications) has a left-border divider — remove it on mobile, add a top-border instead
+        const secondChild = box.children[1];
+        if (secondChild) {
+            secondChild.style.borderLeft = 'none';
+            secondChild.style.paddingLeft = '0';
+            secondChild.style.borderTop = '1px solid #e2e8f0';
+            secondChild.style.paddingTop = '1rem';
+        }
+    } else {
+        box.style.flexDirection = 'row';
+        box.style.gap = '2rem';
+        const secondChild = box.children[1];
+        if (secondChild) {
+            secondChild.style.borderLeft = '2px solid #e2e8f0';
+            secondChild.style.paddingLeft = '2rem';
+            secondChild.style.borderTop = 'none';
+            secondChild.style.paddingTop = '0';
+        }
     }
 }
