@@ -2245,7 +2245,12 @@ window.loadTeammatePosts = function(eventId) {
                       ${isOwn ? `<button onclick="window.handleDeleteTeammatePost('${eventId}', '${p.postId}')" style="background:none; border:none; color:#dc2626; cursor:pointer; font-size:0.7rem; font-weight:600;">Delete</button>` : ''}
                     </div>
                     <p style="font-size:0.85rem; color:#475569; margin:0.35rem 0 0.5rem 0;">${p.message}</p>
-                    ${!isOwn ? `<a href="mailto:${p.studentEmail}?subject=Re: Teammates for your event post" style="font-size:0.75rem; color:#4f46e5; font-weight:600; text-decoration:none;">✉️ Contact ${p.studentName.split(' ')[0]}</a>` : ''}
+                    ${!isOwn ? `
+  <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.35rem;">
+    <a href="mailto:${p.studentEmail}?subject=Re: Teammates for your event post" style="font-size:0.75rem; color:#4f46e5; font-weight:600; text-decoration:none;">✉️ Contact ${p.studentName.split(' ')[0]}</a>
+    <button onclick="window.copyEmailToClipboard('${p.studentEmail}')" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:0.7rem; text-decoration:underline;">Copy email</button>
+  </div>
+` : ''}
                   </div>
                 `;
             }).join('');
@@ -2378,4 +2383,10 @@ window.unfollowFromList = function(ownerEmail) {
         window.openFollowingModal(); // refresh list
     })
     .catch(() => window.showToast("Failed to unfollow.", "error"));
+};
+
+window.copyEmailToClipboard = function(email) {
+    navigator.clipboard.writeText(email)
+        .then(() => window.showToast(`Copied ${email} to clipboard!`, "success"))
+        .catch(() => window.showToast("Couldn't copy — please select and copy manually.", "error"));
 };
