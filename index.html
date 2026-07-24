@@ -38,6 +38,22 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><path d="M12 2a14.5 14.5 0 0 0 0 16"/></svg>
           Society Portal
         </button>
+
+        <div id="notification-bell-wrapper" style="position:relative; display:none;">
+  <button id="notification-bell-btn" onclick="window.toggleNotificationDropdown()" style="background:none; border:none; cursor:pointer; position:relative; padding:0.5rem;">
+    <span style="font-size:1.2rem;">🔔</span>
+    <span id="notification-unread-badge" style="display:none; position:absolute; top:0; right:0; background:#ef4444; color:white; font-size:0.65rem; font-weight:700; padding:0.1rem 0.35rem; border-radius:10px;">0</span>
+  </button>
+  <div id="notification-dropdown" style="display:none; position:absolute; top:110%; right:0; width:320px; max-height:400px; overflow-y:auto; background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); z-index:900;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; border-bottom:1px solid #f1f5f9;">
+      <span style="font-weight:700; font-size:0.85rem; color:#0f172a;">Notifications</span>
+      <button onclick="window.markAllNotificationsRead()" style="background:none; border:none; color:#4f46e5; font-size:0.75rem; font-weight:600; cursor:pointer;">Mark all read</button>
+    </div>
+    <div id="notification-list-root" style="display:flex; flex-direction:column;">
+      <div style="padding:1.5rem; text-align:center; color:#94a3b8; font-size:0.8rem;">No notifications yet.</div>
+    </div>
+  </div>
+</div>
         
         <div id="nav-auth-section">
           <button class="nav-btn auth-btn" onclick="switchView('auth-page')" id="nav-auth-trigger">Log In / Sign Up</button>

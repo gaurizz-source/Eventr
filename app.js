@@ -21,6 +21,7 @@ const state = {
   accessibleOwners: [],
   isSocietyOwner: false,
   rsvpMeta: {},
+  notifications: [],
   lastStatusModalData: { eventTitle: '', registrants: [] },
   eventTotalCounts: {},
   activeHostTab: 'active'
@@ -574,6 +575,7 @@ window.handleSignOut = function() {
 function handleSignOutLocal() {
     state.currentUser = null;
     state.rsvps = [];
+    state.notifications = [];
     localStorage.clear();
     window.showToast('Logged out securely.', 'success');
     updateNavProfile();
@@ -584,6 +586,7 @@ function handleSignOutLocal() {
 
 function updateNavProfile() {
   const container = document.getElementById('nav-auth-section');
+  const bellWrapper = document.getElementById('notification-bell-wrapper');
   if (!container) return;
 
   if (state.currentUser) {
@@ -594,8 +597,11 @@ function updateNavProfile() {
         <span onclick="handleSignOut()" style="font-size:0.8rem; color:#ef4444; font-weight:600; cursor:pointer;">(Logout)</span>
       </div>
     `;
+    if (bellWrapper) bellWrapper.style.display = 'block';
+    renderNotificationCenter();
   } else {
     container.innerHTML = `<button class="nav-btn auth-btn" onclick="window.switchView('auth-page')">Log In / Sign Up</button>`;
+    if (bellWrapper) bellWrapper.style.display = 'none';
   }
 }
 
@@ -1011,6 +1017,7 @@ function fetchSocietyAccess() {
             const newInvitations = data.newInvitations || [];
             newInvitations.forEach(invite => {
                 window.showToast(`You've been added as a member of ${invite.societyName}!`, "success");
+                addNotification('✅', `You've been added as a member of <b>${invite.societyName}</b>.`);
                 fetch(`${API_BASE_URL}/society/mark-notified`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1021,6 +1028,7 @@ function fetchSocietyAccess() {
             const newRemovals = data.newRemovals || [];
             newRemovals.forEach(removal => {
                 window.showToast(`You've been removed from ${removal.societyName}.`, "error");
+                addNotification('⚠️', `You've been removed from <b>${removal.societyName}</b>.`);
                 fetch(`${API_BASE_URL}/society/mark-removal-notified`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2034,6 +2042,7 @@ function fetchFollowedSocieties() {
             const notifications = data.notifications || [];
             notifications.forEach(notif => {
                 window.showToast(`${notif.societyName} posted ${notif.count} new event${notif.count > 1 ? 's' : ''}!`, "success");
+                addNotification('📅', `<b>${notif.societyName}</b> posted ${notif.count} new event${notif.count > 1 ? 's' : ''}.`);
                 fetch(`${API_BASE_URL}/society/mark-follow-checked`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2390,3 +2399,65 @@ window.copyEmailToClipboard = function(email) {
         .then(() => window.showToast(`Copied ${email} to clipboard!`, "success"))
         .catch(() => window.showToast("Couldn't copy — please select and copy manually.", "error"));
 };
+
+// ─── NOTIFICATION CENTER ───
+function renderNotificationCenter() {
+    const badge = document.getElementById('notification-unread-badge');
+    const listRoot = document.getElementById('notification-list-root');
+    if (!badge || !listRoot) return;
+
+    const unreadCount = state.notifications.filter(n => !n.read).length;
+    if (unreadCount > 0) {
+        badge.style.display = 'block';
+        badge.innerText = unreadCount > 9 ? '9+' : unreadCount;
+    } else {
+        badge.style.display = 'none';
+    }
+
+    if (state.notifications.length === 0) {
+        listRoot.innerHTML = `<div style="padding:1.5rem; text-align:center; color:#94a3b8; font-size:0.8rem;">No notifications yet.</div>`;
+        return;
+    }
+
+    listRoot.innerHTML = state.notifications.map(n => `
+        <div style="display:flex; gap:0.6rem; align-items:flex-start; padding:0.75rem 1rem; border-bottom:1px solid #f8fafc; ${n.read ? '' : 'background:#eef2ff;'}">
+          <span style="font-size:1rem;">${n.icon || '🔔'}</span>
+          <div style="flex:1;">
+            <p style="margin:0; font-size:0.8rem; color:#334155; line-height:1.4;">${n.message}</p>
+            <span style="font-size:0.7rem; color:#94a3b8;">${formatTimeAgo(n.timestamp)}</span>
+          </div>
+        </div>
+    `).join('');
+}
+
+function addNotification(icon, message) {
+    state.notifications.unshift({
+        id: 'notif_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        icon,
+        message,
+        timestamp: new Date().toISOString(),
+        read: false
+    });
+    if (state.notifications.length > 50) state.notifications = state.notifications.slice(0, 50);
+    renderNotificationCenter();
+}
+
+window.toggleNotificationDropdown = function() {
+    const dropdown = document.getElementById('notification-dropdown');
+    if (!dropdown) return;
+    dropdown.style.display = (dropdown.style.display === 'block') ? 'none' : 'block';
+};
+
+window.markAllNotificationsRead = function() {
+    state.notifications.forEach(n => n.read = true);
+    renderNotificationCenter();
+};
+
+document.addEventListener('click', (e) => {
+    const wrapper = document.getElementById('notification-bell-wrapper');
+    const dropdown = document.getElementById('notification-dropdown');
+    if (!wrapper || !dropdown) return;
+    if (!wrapper.contains(e.target)) {
+        dropdown.style.display = 'none';
+    }
+});
