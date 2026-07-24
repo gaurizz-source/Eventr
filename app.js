@@ -72,6 +72,13 @@ function checkPersistentSession() {
                     updateHostPermissions();
                     fetchUserRSVPs();
                     fetchFollowedSocieties(); 
+                    updateNavProfile();
+                fetchSocietyAccess().then(() => {
+                    updateHostPermissions();
+                    fetchUserRSVPs();
+                    fetchFollowedSocieties(); 
+                });
+                startNotificationPolling();
                 });
             });
         });
@@ -546,6 +553,14 @@ window.handleAuthWorkflowSubmit = function(e) {
                         fetchUserRSVPs();
                         fetchFollowedSocieties();
                         window.switchView('student-dashboard');
+                        updateNavProfile();
+                    fetchSocietyAccess().then(() => {
+                        updateHostPermissions();
+                        fetchUserRSVPs();
+                        fetchFollowedSocieties();
+                        window.switchView('student-dashboard');
+                    });
+                    startNotificationPolling();
                     });
                 });
             },
@@ -576,6 +591,7 @@ function handleSignOutLocal() {
     state.currentUser = null;
     state.rsvps = [];
     state.notifications = [];
+    stopNotificationPolling();
     localStorage.clear();
     window.showToast('Logged out securely.', 'success');
     updateNavProfile();
@@ -2461,3 +2477,22 @@ document.addEventListener('click', (e) => {
         dropdown.style.display = 'none';
     }
 });
+
+// ─── NOTIFICATION POLLING (checks for new notifications every 2 min without refresh) ───
+let notificationPollInterval = null;
+
+function startNotificationPolling() {
+    if (notificationPollInterval) return; // already running
+    notificationPollInterval = setInterval(() => {
+        if (!state.currentUser) return;
+        fetchSocietyAccess();
+        fetchFollowedSocieties();
+    }, 120000); // 2 minutes
+}
+
+function stopNotificationPolling() {
+    if (notificationPollInterval) {
+        clearInterval(notificationPollInterval);
+        notificationPollInterval = null;
+    }
+}
